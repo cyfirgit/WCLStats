@@ -1,11 +1,11 @@
 # coding: utf-8
-#Module to interface with external apps and their apis.
+#Module to interface with external apps and their apis.  This includes the
+#functions to build the rankings data.
 
 import json
 import os
 import logging
 import math
-import hashlib
 
 from google.appengine.api import urlfetch
 from google.appengine.api import urlfetch_errors
@@ -35,77 +35,6 @@ def static_pull(site, api):
 	return json.loads(response.content)
 	
 	
-'''def rankings_pull_filtered(encounterID, parameters, dimensions):
-	result = {}
-	
-	for dimension in dimensions:
-		dimension_ranks = []
-		
-		#Do a pull for each element in the dimension & combine the results.
-		for element in dimension["elements"]:
-			pull_parameters = parameters
-			
-			#Create the "filter=" parameter for the element.
-			if element["include"] != None:
-				pull_parameters["filter"] = "abilities."
-				for spellID in element["include"]:
-					s = pull_parameters["filter"] + str(spellID) + "."
-					pull_parameters["filter"] = s
-				index = len(pull_parameters["filter"])
-				s = pull_parameters["filter"][:(index - 1)]
-				pull_parameters["filter"] = s
-				if element["exclude"] != None:
-					s = pull_parameters["filter"] + "|noabilities."
-					pull_parameters["filter"] = s
-					for spellID in element["exclude"]:
-						s = pull_parameters["filter"] + str(spellID) + "."
-						pull_parameters["filter"] = s
-					index = len(pull_parameters["filter"])
-					s = pull_parameters["filter"][:(index - 1)]
-					pull_parameters["filter"] = s
-			else:
-				if element["exclude"] != None:
-					pull_parameters["filter"] = "noabilities."
-					for spellID in element["exclude"]:
-						s = pull_parameters["filter"] + str(spellID) + "."
-						pull_parameters["filter"] = s
-					index = len(pull_parameters["filter"])
-					s = pull_parameters["filter"][:(index - 1)]
-					pull_parameters["filter"] = s
-				
-			#Pull the ranks based on filter criteria & add the element data.
-			logging.info("Beginning rankings request for %s" % element["name"])
-			for i in range(3):
-				element_ranks = rankings_pull_all_pages(encounterID, pull_parameters)
-				if element_ranks != None:
-					break
-				else:
-					logging.info("Attempt %d failed." % i)
-			else:
-				logging.error("Could not establish a successful pull. Aborted.")
-				return None
-			logging.info("Appending element attribute to retrieved ranks")
-			for rank in element_ranks:
-				rank[dimension["name"]] = element["name"]
-				
-			dimension_ranks += element_ranks
-				
-		if len(result) == 0:
-			#If this is the first dimension examined, build results.
-			for rank in dimension_ranks:
-				rankID = hash_rank(rank["reportID"], rank["name"], 
-								   rank["startTime"])
-				result[rankID] = rank
-		else:
-			return result
-			#Otherwise, append the new dimension to existing results.
-			# for rank in dimension_ranks:
-				# rankID = hash_rank(rank["reportID"], rank["name"], 
-								   # rank["startTime"])
-				# result[rankID][dimension["name"]] = element["name"]
-				
-	return result'''
-	
 def rankings_pull_filtered(encounterID, parameters, dimensions):
 	filters = build_filters(dimensions)
 	result = []
@@ -131,7 +60,10 @@ def rankings_pull_filtered(encounterID, parameters, dimensions):
 	
 	return result
 	
+	
 def build_filters(dimensions):
+	#Take a dictionary of dimensions and create a set of unique filters for
+	#each permution of combining dimensions.
 	filter_count = 1
 	filter_options = []
 	filter_counter = []
@@ -200,20 +132,109 @@ def build_filters(dimensions):
 				filter_counter[j + 1] += 1
 	
 	return result
-	
 		
 	
-				
+def build_trinket_dimensions(trinkets):
+	#Take a set of trinket options and generate a dimensions dictinary that can
+	#be appended to the other dimensions.  This function will always return a 
+	#list of dimensions that only factors in the selected trinkets; the user
+	#must specifically include "Other Trinkets" as a trinket choice to see e.g.
+	#ranks where only one of the selected trinkets is in use.
+	''' Trinkets come in as:
+	[
+		{
+			"name": "",
+			"include": [1, 2, ... n],
+			"exclude": [1, 2, ... n]
+			}
+		]
+	Dictionary goes out as:
+	{
+		"Trinket1|Trinket2": {
+			"include": [1, 2, ... n],
+			"exclude": [1, 2, ... n]
+			}
+		}
+	'''
+	slot = [0,1]
+	result = {}
+	trinkets_exclude_all = []
+	both_other_trinkets_flag = False
+	kill_index = None
+	
+	#We need to create a list of all trinket effects we're considering.  During
+	#the loop, we'll remove the other trinket's effect from this list for each
+	#trinket considered.  During this loop we'll also flag to construct a
+	#dimension for "Both Other Trinkets", and t
+	for trinket in trinkets:
+		if trinket["include"] != None:
+			trinkets_exclude_all += trinket["include"]
+		if trinket["name"] == "Both Other Trinkets":
+			both_other_trinkets_flag = True
+			kill_index = trinkets.index(trinket)
+	if kill_index != None:
+		trinkets.pop(kill_index)
+	if both_other_trinkets_flag == True:
+		result["Both Other Trinkets"] = {}
+		result["Both Other Trinkets"]["include"] = None
+		result["Both Other Trinkets"]["exclude"] = trinkets_exclude_all
+
+	#We use a theorem one stars and bars formula to determine the number of
+	#possible combinations of trinkets.  Because k is always 2 (number of 
+	#trinket slots,) the formula can be reduced significantly.		
+	dimensions = (len(trinkets)**2 - len(trinkets)) / 2
+	
+	for dimension in range(dimensions):
+	
+		#If one of the trinkets is "Other Trinkets", apply an "exclude" to it
+		#equal to the "include" of every trinket except the paired counterpart.
+		if trinkets[slot[0]]["name"] == "Other Trinkets":
+			other_trinkets_exclude = list(trinkets_exclude_all)
+			for i in range(len(trinkets[slot[1]]["include"])):
+				other_trinkets_exclude.remove(trinkets[slot[1]]["include"][i])
+			trinkets[slot[0]]["exclude"] = other_trinkets_exclude
+		elif trinkets[slot[1]]["name"] == "Other Trinkets":
+			other_trinkets_exclude = list(trinkets_exclude_all)
+			for i in range(len(trinkets[slot[0]]["include"])):
+				other_trinkets_exclude.remove(trinkets[slot[0]]["include"][i])
+			trinkets[slot[1]]["exclude"] = other_trinkets_exclude
 		
-'''def hash_rank(reportID, name, startTime):
-	rank_hash = hashlib.sha1()
-	rank_hash.update(reportID)
-	rank_hash.update(name.encode('utf-8'))
-	rank_hash.update(str(startTime))
-	return rank_hash.hexdigest()'''
+		
+		pair = {"include": [], "exclude": []}
+		name = trinkets[slot[0]]["name"] + "|" + trinkets[slot[1]]["name"]
+		if trinkets[slot[0]]["include"] != None:
+			pair["include"] += trinkets[slot[0]]["include"]
+		if trinkets[slot[1]]["include"] != None:
+			pair["include"] += trinkets[slot[1]]["include"]
+		if trinkets[slot[0]]["exclude"] != None:
+			pair["exclude"] += trinkets[slot[0]]["exclude"]
+		if trinkets[slot[1]]["exclude"] != None:
+			pair["exclude"] += trinkets[slot[1]]["exclude"]
+			
+		if len(pair["include"]) == 0:
+			pair["incldue"] = None
+		if len(pair["exclude"]) == 0:
+			pair["exclude"] = None
+		
+		result[name] = pair
+		
+		#increment trinket pairings
+		if slot[1] + 1 < len(trinkets):
+			slot[1] += 1
+		elif slot[0] + 1 < slot[1]:
+			slot[0] += 1
+			slot[1] = slot[0] + 1
+			
+	return result
 		
 	
 def rankings_pull_all_pages(encounterID, parameters):
+	#Take a set of parameters(w/ a unique set of dimensions,) and pull all
+	#pages of applicable rankings.
+	#TODO: 
+	#-Fix the calculations in logging to accurately represent ranks
+	#pulled.
+	#-Refactor the timeout handling system to something sensible and reliable.
 	parameters["limit"] = 1000
 	parameters["page"] = 1
 	missed_pages = []
@@ -266,7 +287,7 @@ def rankings_pull_all_pages(encounterID, parameters):
 	
 	
 def rankings_pull(encounterID, parameters):
-	#Pull rankings from WCL based on passed parameters.
+	#Pull a single page of ranks.
 	site = "WCL"
 	key = json_pull("apikeys.json")["WCL"]["key"]
 	url_base = "https://www.warcraftlogs.com:443/v1/rankings/encounter/"
@@ -296,8 +317,12 @@ def rankings_pull(encounterID, parameters):
 	
 				  	
 def json_pull(dct):
+	#Pull data from a static .json file and load it into memory.
 	path = os.path.join(os.path.split(__file__)[0], dct)
 	return json.load(open(path))
+	
+
+
 
 
 

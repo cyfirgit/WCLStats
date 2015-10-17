@@ -18,6 +18,54 @@ test_parameters = {
 	"spec":3,
 	}
 	
+test_trinkets = [
+	{
+		"name": "Unending Hunger",
+		"include": [183941],
+		"exclude": None
+		},
+	{
+		"name": "Discordant Chorus",
+		"include": [184248],
+		"exclude": None
+		},
+	{
+		"name": "Empty Drinking Horn",
+		"include": [184256],
+		"exclude": None
+		},
+	{
+		"name": "Both Other Trinkets",
+		"include": None,
+		"exclude": None
+		},
+	{
+		"name": "Reaper's Harvest",
+		"include": [184983],
+		"exclude": None
+		},
+	{
+		"name": "Vial of Convulsive Shadows",
+		"include": [176874],
+		"exclude": None
+		},
+	{
+		"name": "Other Trinkets",
+		"include": None,
+		"exclude": None
+		},
+	{
+		"name": "Forgemaster's Insignia",
+		"include": [177096],
+		"exclude": None
+		},
+	{
+		"name": "Horn of Screaming Spirits",
+		"include": [177042],
+		"exclude": None
+		},
+	]
+		
 test_dimensions = {
 	"T7 Talent": {
 		"NP": {
@@ -46,11 +94,13 @@ test_dimensions = {
 			"include": None,
 			"exclude": [114851, 51460]
 			}
-		}
+		},
+	"Trinkets": apirequests.build_trinket_dimensions(test_trinkets)
 	}
 	
 pull = apirequests.rankings_pull_filtered(1799, test_parameters, test_dimensions)
 output = exportdata.csv_output(pull, test_dimensions)
+
 		
 app = webapp2.WSGIApplication([
     ('/', MainPage),
