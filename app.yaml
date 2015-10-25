@@ -5,11 +5,14 @@ api_version: 1
 threadsafe: yes
 
 handlers:
-- url: .*
+- url: /stylesheets
+  static_dir: stylesheets
+
+- url: /.*
   script: wclstats.app
 
 libraries:
 - name: webapp2
   version: "2.5.2"
 - name: jinja2
-  version: latest
+  version: "2.6"
