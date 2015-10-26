@@ -3,10 +3,8 @@
 {% block header %}
 	<script type="text/javascript">
 		$(document).ready(function () {
-			$("#selectFilter").change(function(){
+			$("select#selectFilter").change(function(){
 				$("#theAlert").alert();
-				<!-- var selectedFilter = $(".selectFilter option:selected").val();
-				<!-- alert("You have selected " + selectedFilter);
 			});
 		});
 	</script>
@@ -15,13 +13,14 @@
 {% block content %}
 	<div class="container">
 		<h1>Request Builder</h1>
-		<form class="colform-inline" action="/buildrequest" method="POST">
+
+		<form class="colform-inline" action="/buildrequest" method="GET">
 			<div class="form-group">
 				<label for="selectFilter" class="col-sm-3 control-label">Select a filter: </label>
 				<div class="col-sm-6">
 					<select class="form-control" id="selectFilter">
 						{% for filter in filters %}
-							<option>{{ filter.name }}</option>
+							<option value={{filter.status}}>{{ filter.name }}</option>
 						{% endfor %}
 					</select>
 				</div>
@@ -30,11 +29,7 @@
 				</div>
 			<div>
 		</form>
-		<div class="bs-example">
-			<div id="theAlert" class="alert alert-info">
-				<a href="#" class="close" data-dismiss="alert">&times;</a>
-				You have selected!
-			</div>
-		</div>
+		
+		<h1>{{ selected_filter }}</h1>
 	</div>
 {% endblock %}

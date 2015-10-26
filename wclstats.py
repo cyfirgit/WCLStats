@@ -23,82 +23,86 @@ JINJA_ENVIRONMENT = jinja2.Environment(
 
 	
 class RequestFilter(ndb.Model):
-	name = ndb.StringProperty()
+    name = ndb.StringProperty()
 	
 	
 class MainPage(webapp2.RequestHandler):
     def get(self):
-		template = JINJA_ENVIRONMENT.get_template("templates/wclstats.html")
-		self.response.write(template.render({}))
+        template = JINJA_ENVIRONMENT.get_template("templates/wclstats.html")
+        self.response.write(template.render({}))
 		
 		
 class RequestBuilderPage(webapp2.RequestHandler):
+    selected_filter = []
+    
+    def post(self):
+        selected_filter = self.request.get("selectFilter")
+    
     def get(self):
-		filters = RequestFilter.query().fetch()
-	
-		template_values = {
-			'filters': filters,
-		}
-	
-		template = JINJA_ENVIRONMENT.get_template("templates/requestbuilder.html")
-		self.response.write(template.render(template_values))
+        filters = RequestFilter.query().fetch()
+        template_values = {
+            'filters': filters,
+            'selected_filter': selected_filter,
+        }
+        template = JINJA_ENVIRONMENT.get_template("templates/requestbuilder.html")
+        self.response.write(template.render(template_values))
 		
 		
 class AboutPage(webapp2.RequestHandler):
     def get(self):
-		template = JINJA_ENVIRONMENT.get_template("templates/about.html")
-		self.response.write(template.render({}))
+        template = JINJA_ENVIRONMENT.get_template("templates/about.html")
+        self.response.write(template.render({}))
 
 		
 class DownloadPage(webapp2.RequestHandler):
     def post(self):
-		logging.info("***Beginning Frost Pull***")
-		pull = apirequests.rankings_pull_filtered(boss, frost_parameters, frost_dimensions)
-		logging.info("***Compiling frost.csv data***")
-		output = exportdata.csv_output(pull, frost_dimensions)
-		self.response.headers["Content-Type"] = "application/csv"
-		self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % "output.csv"
-		self.response.write(output)
+        logging.info("***Beginning Frost Pull***")
+        pull = apirequests.rankings_pull_filtered(boss, frost_parameters, frost_dimensions)
+        logging.info("***Compiling frost.csv data***")
+        output = exportdata.csv_output(pull, frost_dimensions)
+        self.response.headers["Content-Type"] = "application/csv"
+        self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % "output.csv"
+        self.response.write(output)
 		
 		
 app = webapp2.WSGIApplication([
     ('/', MainPage),
-	('/requestbuilder', RequestBuilderPage),
-	('/about', AboutPage),
-	('/output', DownloadPage)
+    ('/requestbuilder', RequestBuilderPage),
+    ('/about', AboutPage),
+    ('/output', DownloadPage)
 ], debug=True)
 
 # dl = webapp2.WSGIApplication([
-	# ('/output/', DownloadPage)
+    # ('/output/', DownloadPage)
 # ], debug=True)
 
 boss = 1799
 
 unholy_parameters = {
-	"metric":"dps",
-	"difficulty":5,
-	"class":1,
-	"spec":3,
-	}
+    "metric":"dps",
+    "difficulty":5,
+    "class":1,
+    "spec":3,
+    }
 	
 unholy_trinkets = [
-	{
-		"name": "Unending Hunger",
-		"include": [183941],
-		"exclude": None
-		},
-	{
-		"name": "Discordant Chorus",
-		"include": [184248],
-		"exclude": None
-		},
-	{
-		"name": "Empty Drinking Horn",
-		"include": [184256],
-		"exclude": None
-		},
-	{
-		"name": "Both Other Trinkets",
+    {
+        "name": "Unending Hunger",
+        "include": [183941],
+        "exclude": None
+        },
+    {
+        "name": "Discordant Chorus",
+        "include": [184248],
+        "exclude": None
+        },
+    {
+        "name": "Empty Drinking Horn",
+        "include": [184256],
+        "exclude": None
+        },
+    {
+        "name": "Both Other Trinkets",
 		"include": None,
 		"exclude": None
 		},
