@@ -7,6 +7,9 @@ threadsafe: yes
 handlers:
 - url: /stylesheets
   static_dir: stylesheets
+  
+- url: /resources
+  static_dir: resources
 
 - url: /.*
   script: wclstats.app

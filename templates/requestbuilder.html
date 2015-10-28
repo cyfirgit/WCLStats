@@ -1,35 +1,30 @@
 {% extends 'templates/wclstats.html' %}
 
 {% block header %}
-	<script type="text/javascript">
-		$(document).ready(function () {
-			$("select#selectFilter").change(function(){
-				$("#theAlert").alert();
-			});
-		});
-	</script>
+	<script src="/resources/requestbuilder.js"></script>
 {% endblock %}
 
 {% block content %}
 	<div class="container">
 		<h1>Request Builder</h1>
 
-		<form class="colform-inline" action="/buildrequest" method="GET">
+		<form class="colform-inline">
 			<div class="form-group">
 				<label for="selectFilter" class="col-sm-3 control-label">Select a filter: </label>
 				<div class="col-sm-6">
 					<select class="form-control" id="selectFilter">
 						{% for filter in filters %}
-							<option value={{filter.status}}>{{ filter.name }}</option>
+							<option value="{{ filter.name }}">{{ filter.name }}</option>
 						{% endfor %}
 					</select>
 				</div>
 				</div class="col-sm-3">
-					<button class="btn btn-primary">Create New</button>
+					<button class="btn btn-primary" id="newFilter">Create New</button>
 				</div>
 			<div>
 		</form>
-		
-		<h1>{{ selected_filter }}</h1>
 	</div>
+
+{% block filter_form %}{% endblock %}
+
 {% endblock %}

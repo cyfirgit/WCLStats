@@ -33,18 +33,28 @@ class MainPage(webapp2.RequestHandler):
 		
 		
 class RequestBuilderPage(webapp2.RequestHandler):
-    selected_filter = []
-    
-    def post(self):
-        selected_filter = self.request.get("selectFilter")
-    
     def get(self):
         filters = RequestFilter.query().fetch()
         template_values = {
             'filters': filters,
+        }
+        
+        template = JINJA_ENVIRONMENT.get_template("templates/requestbuilder.html")
+        self.response.write(template.render(template_values))
+        
+        
+class BuildFilterForm(webapp2.RequestHandler):
+    def post(self):
+        pass
+    
+class SelectFilterForm(webapp2.RequestHandler):
+    def post(self):
+        selected_filter = self.request.get('filter')
+        
+        template_values = {
             'selected_filter': selected_filter,
         }
-        template = JINJA_ENVIRONMENT.get_template("templates/requestbuilder.html")
+        template = JINJA_ENVIRONMENT.get_template("templates/filterform.html")
         self.response.write(template.render(template_values))
 		
 		
@@ -68,6 +78,8 @@ class DownloadPage(webapp2.RequestHandler):
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/requestbuilder', RequestBuilderPage),
+    ('/buildfilterform', BuildFilterForm),
+    ('/selectfilterform', SelectFilterForm),
     ('/about', AboutPage),
     ('/output', DownloadPage)
 ], debug=True)
