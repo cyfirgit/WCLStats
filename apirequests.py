@@ -282,7 +282,19 @@ def json_pull(dct):
 	return json.load(open(path))
 	
 
-
+def static_request(site, type):
+    key = json_pull("apikeys.json")[site]["key"]
+    url = json_pull("apikeys.json")[site][type] + key
+    
+    try:
+		urlfetch.set_default_fetch_deadline(60)
+		response = urlfetch.fetch(url)
+		result = json.loads(response.content)
+    except urlfetch.Error:
+		logging.error("Request from %s for type %s failed." % (site, type))
+		return None
+        
+    return result
 
 
 

@@ -1,17 +1,24 @@
-function loadFilter() {
-	var selectedFilter = $( "#selectFilter" ).val();
+function selectRequest() {
+	var selectedRequest = this.id;
+	console.log("Firing selectRequest");
+	console.log(selectedRequest);
+	$( '#requestName' ).val(selectedRequest);
+	
 	var data = {
-		filter: selectedFilter
+		request: selectedRequest
 	}
-	$.post('/selectfilterform', data);
+	$.post('/selectrequestform', data, buildRequest, 'html');
 };
 
-function newFilter() {
-	console.log("Loading a new filter.");
-	$.post('/selectfilterform', "new!");
+function newRequest() {
+	$.post('/selectrequestform', {request:"new"}, buildRequest, 'html');
+};
+
+function buildRequest(requestForm) {
+	$("#requestForm").html(requestForm);
 };
 
 $(document).ready(function() {
-	$( "#selectFilter" ).change(loadFilter);
-	$( "#newFilter" ).click(newFilter);
+	$( "#selectRequest li a" ).click(selectRequest);
+	$( "#newRequest" ).click(newRequest);
 });

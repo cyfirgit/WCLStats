@@ -8,23 +8,33 @@
 	<div class="container">
 		<h1>Request Builder</h1>
 
-		<form class="colform-inline">
-			<div class="form-group">
-				<label for="selectFilter" class="col-sm-3 control-label">Select a filter: </label>
-				<div class="col-sm-6">
-					<select class="form-control" id="selectFilter">
-						{% for filter in filters %}
-							<option value="{{ filter.name }}">{{ filter.name }}</option>
-						{% endfor %}
-					</select>
+		<form class="colform-inline" method="POST" action="/buildrequestform">
+			<div class="row">
+				<div class="col-sm-12">
+					<div class="input-group col-sm-9">
+						<div class="input-group-btn">
+							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+								Select a request <span class="caret"></span>
+							</button>
+							<ul class="dropdown-menu" id="selectRequest">
+								{% for request in requests %}
+									<li><a id="{{ request.name }}">
+										{{ request.name }}
+									</a></li>
+								{% endfor %}
+							</ul>
+						</div>
+						<input type="text" class="form-control" id="requestName" 
+						aria-label="Enter a name to create a new request:" placeholder="Enter a name to create a new request">
+						<div class="input-group-btn">
+							<button class="btn btn-primary" id="newRequest" type="button">Create New</button>
+						</div>
+					</div>
 				</div>
-				</div class="col-sm-3">
-					<button class="btn btn-primary" id="newFilter">Create New</button>
-				</div>
-			<div>
+			</div>
+			<div id="requestForm"></div>
 		</form>
 	</div>
 
-{% block filter_form %}{% endblock %}
-
 {% endblock %}
+
