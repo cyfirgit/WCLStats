@@ -4,10 +4,10 @@
 
 #For prototype:
     #Build web interface for pull requests
-        #Add trinket dimension to resquestform.html
         #Add/Remove item functions
         #New reqest option
         #submit form processing code
+            #Other Trinkets/Both Other Trinkets options
         #My Pulls page
     #Add user account controls
 
@@ -72,6 +72,7 @@ class Parameter(ndb.Model):
 class Dimension(ndb.Model):
     name = ndb.StringProperty()
     parameters = ndb.KeyProperty(kind='Parameter', repeated=True)
+    other_trinkets = ndb.BooleanProperty()
     
     @classmethod
     def query_dimension(cls, ancestor_key):
@@ -127,12 +128,23 @@ class SelectRequestForm(webapp2.RequestHandler):
                 parameters.append({
                     "name": parameter.name,
                     "include": parameter.include,
-                    "exlcude": parameter.exclude
+                    "exclude": parameter.exclude
                     })
             dimensions.append({
                 "name": dimension.name,
                 "parameters": parameters
                 })
+        trinkets_keys = Dimension.get_by_id(request_complete.trinket_dimension.id())
+        other_trinkets = trinkets_keys.other_trinkets
+        trinkets_objects = ndb.get_multi(trinkets_keys.parameters)
+        trinkets = []
+        for trinket in trinkets_objects:
+            new_trinket = {
+                'name': trinket.name,
+                'include': trinket.include,
+                'exclude': trinket.exclude
+                }
+            trinkets.append(new_trinket)
                 
         #Pass class and spec data to the form for dropdowns.
         classes = Reference.get_by_id("wcl_classes").json
@@ -146,6 +158,8 @@ class SelectRequestForm(webapp2.RequestHandler):
                 'character_class': request_complete.character_class,
                 'specializations': request_complete.specialization,
                 'dimensions': dimensions,
+                'trinkets': trinkets,
+                'other_trinkets': other_trinkets,
                 'class_index': class_index,
                 },
             'classes': classes,
