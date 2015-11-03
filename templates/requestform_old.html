@@ -1,0 +1,285 @@
+	<div class="row">
+		<div class="col-sm-3">
+			<select id="characterClass" class="form-control">
+				{% for class_ in classes %}
+					<option value="{{ class_['id'] }}" 
+						{% if class_['id'] == request['character_class'] %}
+							selected="selected" 
+						{% endif %}>
+						{{ class_['name'] }}
+					</option>
+				{% endfor %}
+			</select>
+		</div>
+		<div id="indent" class="col-sm-1"></div>
+		<div class="col-sm-4">
+			<div class="checkbox" id="specializations">
+				{% for specialization in classes[request['class_index']]['specs'] %}
+					<label class="checkbox">
+						<input type="checkbox" value="{{ specialization['id'] }}"
+						{% if specialization['id'] in request['specializations'] %}
+							checked
+						{% endif %}>
+						{{ specialization['name'] }}
+					</label>
+				{% endfor %}
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-sm-2">
+			<h3>Dimensions</h3>
+		</div>
+	</div>
+	<div class="row">
+		<div id="dimensions" class="col-sm-12">
+			{% for dimension in request['dimensions'] %}
+				<div class="row">
+					<div class="col-sm-5">
+						<div class="input-group">
+							<input type="text" class="form-control" value="{{ dimension['name'] }}">
+							<span class="input-group-btn">
+								<button class="btn btn-danger" type="button">
+									<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+								</button>
+							</span>
+						</div>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-sm-1" id="indent"></div>
+					<div class="col-sm-11">
+						<div class="row bottom-buffer">
+							<h4>Parameters</h4>
+						</div>
+						{% for parameter in dimension['parameters'] %}
+							<div class="row">
+								<div class="col-sm-5">
+									<div class="input-group">
+										<input type="text" class="form-control" value="{{ parameter['name'] }}">
+										<span class="input-group-btn">
+											<button class="btn btn-danger" type="button">
+												<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+											</button>
+										</span>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="col-sm-3">
+									<div class="row">
+										<h5>Include</h5>
+									</div>
+									{% for spell_id in parameter['include'] %}
+										<div class="row">
+												<div class="input-group">
+													<input type="text" class="form-control" value="{{ spell_id }}">
+													<span class="input-group-btn">
+														<button class="btn btn-danger" type="button">
+															<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+														</button>
+													</span>
+												</div>
+										</div>
+									{% endfor %}
+									<div class="row">
+											<div class="input-group">
+												<input type="text" id="newDimensionName" class="form-control" placeholder="Add spell ID">
+												<span class="input-group-btn">
+													<button class="btn btn-success" type="button">
+														<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+													</button>
+												</span>
+											</div>
+									</div>	
+								</div>
+								<div class="col-sm-1" id="indent"></div>
+								<div class="col-sm-3">
+									<div class="row">
+										<h5>Exclude</h5>
+									</div>
+									{% for spell_id in parameter['exclude'] %}
+										<div class="row">
+												<div class="input-group">
+													<input type="text" class="form-control" value="{{ spell_id }}">
+													<span class="input-group-btn">
+														<button class="btn btn-danger" type="button">
+															<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+														</button>
+													</span>
+												</div>
+										</div>
+									{% endfor %}
+									<div class="row">
+											<div class="input-group">
+												<input type="text" id="newDimensionName" class="form-control" placeholder="Add spell ID">
+												<span class="input-group-btn">
+													<button class="btn btn-success" type="button">
+														<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+													</button>
+												</span>
+											</div>
+									</div>	
+								</div>
+							</div>
+							<div class="row bottom-buffer">
+								<div class="col-sm-10">
+									<hr>
+								</div>
+							</div>
+						{% endfor %}
+						<div class="row">
+							<div class="col-sm-5">
+								<div class="input-group">
+									<input type="text" id="newDimensionName" class="form-control" placeholder="Add a new parameter">
+									<span class="input-group-btn">
+										<button class="btn btn-success" type="button">
+											<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+										</button>
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row bottom-buffer">
+					<div class="col-sm-10">
+						<hr>
+					</div>
+				</div>
+			{% endfor %}
+			
+			<div class="row">
+				<div class="col-sm-5">
+					<div class="input-group">
+						<input type="text" class="form-control" value="Trinkets">
+						<span class="input-group-btn">
+							<button class="btn btn-danger" type="button">
+								<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+							</button>
+						</span>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-1" id="indent"></div>
+				<div class="col-sm-11">
+					<div class="row bottom-buffer">
+						<h4>Trinkets</h4>
+						<label class="checkbox-inline">
+							<input type="checkbox" id="includeOtherTrinkets"
+								{% if request['other_trinkets'] == True %}
+									checked
+								{% endif %}>
+							Include Other Trinkets
+						</label>
+					</div>
+					{% for trinket in request['trinkets'] %}
+						<div class="row">
+							<div class="col-sm-5">
+								<div class="input-group">
+									<input type="text" class="form-control" value="{{ trinket['name'] }}">
+									<span class="input-group-btn">
+										<button class="btn btn-danger" type="button">
+											<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+										</button>
+									</span>
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-sm-3">
+								<div class="row">
+									<h5>Include</h5>
+								</div>
+								{% for spell_id in trinket['include'] %}
+									<div class="row">
+										<div class="input-group">
+											<input type="text" class="form-control" value="{{ spell_id }}">
+											<span class="input-group-btn">
+												<button class="btn btn-danger" type="button">
+													<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+												</button>
+											</span>
+										</div>
+									</div>
+								{% endfor %}
+								<div class="row">
+									<div class="input-group">
+										<input type="text" id="newDimensionName" class="form-control" placeholder="Add spell ID">
+										<span class="input-group-btn">
+											<button class="btn btn-success" type="button">
+												<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+											</button>
+										</span>
+									</div>
+								</div>	
+							</div>
+							<div class="col-sm-1" id="indent"></div>
+							<div class="col-sm-3">
+								<div class="row">
+									<h5>Exclude</h5>
+								</div>
+								{% for spell_id in trinket['exclude'] %}
+									<div class="row">
+										<div class="input-group">
+											<input type="text" class="form-control" value="{{ spell_id }}">
+											<span class="input-group-btn">
+												<button class="btn btn-danger" type="button">
+													<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+												</button>
+											</span>
+										</div>
+									</div>
+								{% endfor %}
+								<div class="row">
+									<div class="input-group">
+										<input type="text" id="newDimensionName" class="form-control" placeholder="Add spell ID">
+										<span class="input-group-btn">
+											<button class="btn btn-success" type="button">
+												<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+											</button>
+										</span>
+									</div>
+								</div>	
+							</div>
+						</div>
+						<div class="row bottom-buffer">
+							<div class="col-sm-10">
+								<hr>
+							</div>
+						</div>
+					{% endfor %}
+						<div class="row">
+							<div class="col-sm-5">
+								<div class="input-group">
+									<input type="text" id="newDimensionName" class="form-control" placeholder="Add a new trinket">
+									<span class="input-group-btn">
+										<button class="btn btn-success" type="button">
+											<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+										</button>
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row bottom-buffer">
+					<div class="col-sm-10">
+						<hr>
+					</div>
+				</div>
+			<div class="row">
+				<div class="col-sm-5">
+					<div class="input-group">
+						<input type="text" id="newDimensionName" class="form-control" placeholder="Add a new dimension">
+						<span class="input-group-btn">
+							<button class="btn btn-success" type="button">
+								<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+							</button>
+						</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
