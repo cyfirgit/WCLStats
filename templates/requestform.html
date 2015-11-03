@@ -1,4 +1,4 @@
-{% macro spell_id_template(element_id_spell_id, spell_id, button_state_spell_id) -%}
+{% macro spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, spell_id, button_state_spell_id) -%}
 	<div class="row">
 		<div class="input-group">
 			<input 
@@ -31,13 +31,9 @@
 			</span>
 		</div>
 	</div>
-	{% if button_state_spell_id == 'minus' %}
-		{% set element_id_spell_id = element_id_spell_id + 1 %}
-		<script>setID('spell_id', {{ element_id_dimension }}, {{ element_id_parameter }}, {{ element_id_spell_id }})</script>
-	{% endif %}
 {%- endmacro %}
 
-{% macro parameter_template(element_id_parameter, parameter, button_state_parameter) -%}
+{% macro parameter_template(element_id_dimension, element_id_parameter, parameter, button_state_parameter) -%}
 	<div class="row">
 		<div class="col-sm-5">
 			<div class="input-group">
@@ -78,11 +74,12 @@
 				<div class="row">
 					<h5>Include</h5>
 				</div>
-				{% set element_id_spell_id = 101 %}
+				{% set start_id_spell_id = 101 %}
 				{% for spell_id in parameter['include'] %}
-					{% set spell_id_counter = loop.index %}
+					{% set element_id_spell_id = start_id_spell_id + loop.index0 %}
 					<div id="spell_id_{{ element_id_dimension }}_{{ element_id_parameter }}_{{ element_id_spell_id }}">
-						{{ spell_id_template(element_id_spell_id, spell_id, 'minus') }}
+						{{ spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, spell_id, 'minus') }}
+						<script>setID('spell_id', element_id_dimension, element_id_parameter, element_id_spell_id)</script>
 					</div>
 				{% endfor %}
 				{{ spell_id_template('new_spell_id', none, 'plus') }}
@@ -92,9 +89,13 @@
 				<div class="row">
 					<h5>Exclude</h5>
 				</div>
-				{% set element_id_spell_id = 201 %}
+				{% set start_id_spell_id = 201 %}
 				{% for spell_id in parameter['exclude'] %}
-					{{ spell_id_template(element_id_spell_id, spell_id, 'minus') }}
+					{% set element_id_spell_id = start_id_spell_id + loop.index0 %}
+					<div id="spell_id_{{ element_id_dimension }}_{{ element_id_parameter }}_{{ element_id_spell_id }}">
+						{{ spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, spell_id, 'minus') }}
+						<script>setID('spell_id', element_id_dimension, element_id_parameter, element_id_spell_id)</script>
+					</div>
 				{% endfor %}
 				{{ spell_id_template(element_id_spell_id, none, 'plus') }}
 			</div>
@@ -104,10 +105,6 @@
 				<hr>
 			</div>
 		</div>
-	{% endif %}
-	{% if parameter != none %}
-		{% set element_id_parameter = element_id_parameter + 1 %}
-		<script>setID('parameter', {{ element_id_dimension }}, {{ element_id_parameter }}, 0)</script>
 	{% endif %}
 {%- endmacro %}
 
@@ -154,10 +151,15 @@
 					<div class="row bottom-buffer">
 						<h4>Parameters</h4>
 					</div>
+					{% set start_id_parameter = 1 %}
 					{% for parameter in dimension['parameters'] %}
-						{{ parameter_template(element_id_parameter, parameter, 'minus') }}
+						{% set element_id_parameter = start_id_parameter + loop.index0 %}
+						<div id="parameter_{{ element_id_dimension }}_{{ element_id_parameter }}">
+							{{ parameter_template(element_id_dimension, element_id_parameter, parameter, 'minus') }}
+							<script>setID('spell_id', element_id_dimension, element_id_parameter, 0)</script>
+						</div>
 					{% endfor %}
-					{{ parameter_template(element_id_parameter, none, 'plus') }}
+					{{ parameter_template('new_parameter', none, 'plus') }}
 				{% endif %}
 			</div>
 		</div>
@@ -166,10 +168,6 @@
 				<hr>
 			</div>
 		</div>
-	{% if button_state_dimension == 'minus' %}
-		{% set element_id_dimension = element_id_dimension + 1 %}
-		<script>setID('dimension', {{ element_id_dimension }}, 0, 0)</script>
-	{% endif %}
 {%- endmacro %}
 
 <!-- Begin Request Builder Form -->
@@ -210,7 +208,6 @@
 	<div id="dimensions" class="col-sm-12">
 		{% set element_id_dimension = 0 %}
 		{% if request['trinkets'] is defined %}
-			{% set element_id_parameter = 1 %}
 			<script>formID[0]=[]</script>
 			<div class="row">
 				<div class="col-sm-5">
@@ -237,8 +234,13 @@
 							Include Other Trinkets
 						</label>
 					</div>
+					{% set start_id_parameter = 1 %}
 					{% for trinket in request['trinkets'] %}
-						{{ parameter_template(element_id_parameter, trinket, 'minus') }}
+						{% set element_id_parameter = start_id_parameter + loop.index0 %}
+						<div id="parameter_{{ element_id_dimension }}_{{ element_id_parameter }}">
+							{{ parameter_template(element_id_dimension, element_id_parameter, trinket, 'minus') }}
+							<script>setID('spell_id', element_id_dimension, element_id_parameter, 0)</script>
+						</div>
 					{% endfor %}
 					{{ parameter_template('new_parameter', none, 'plus') }}
 				</div>
@@ -251,8 +253,9 @@
 		{% else %}
 			<!-- Include trinkets code -->
 		{% endif %}
-		{% set element_id_dimension = 1 %}
+		{% set start_id_dimension = 1 %}
 		{% for dimension in request['dimensions'] %}
+			{% set element_id_dimension = start_id_dimension + loop.index0 %}
 			{{ dimension_template(element_id_dimension, dimension, 'minus') }}
 		{% endfor %}
 		{{ dimension_template(element_id_dimension, none, 'plus') }}
