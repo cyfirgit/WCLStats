@@ -20,6 +20,7 @@ import os
 import jinja2
 import webapp2
 import logging
+import json
 
 from google.appengine.ext import ndb
 
@@ -168,6 +169,30 @@ class SelectRequestForm(webapp2.RequestHandler):
         template = JINJA_ENVIRONMENT.get_template("templates/requestform.html")
         self.response.write(template.render(template_values))
 		
+        
+class NewElementForm(webapp2.RequestHandler):
+    def post(self):
+    #this needs all the code and template_values still!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        idArray = self.request.get('idArray')
+        type = self.request.get('type')
+        spell_id = self.request.get('spell_id')
+        element_id = self.request.get('element_id')
+        
+        template_values = {
+            'idArray': idArray,
+            'type': type,
+            'spell_id': spell_id,
+            }
+        
+        template = JINJA_ENVIRONMENT.get_template("templates/newelement.html")
+        rendered_template = template.render({template_values})
+        new_element = {
+            'template': rendered_template,
+            'element_id': element_id,
+            }
+        new_element_json = json.dump(new_element)
+        self.response.write(new_element_json)
+        
 		
 class AboutPage(webapp2.RequestHandler):
     def get(self):
@@ -245,6 +270,7 @@ app = webapp2.WSGIApplication([
     ('/requestbuilder', RequestBuilderPage),
     ('/buildrequestform', BuildRequestForm),
     ('/selectrequestform', SelectRequestForm),
+    ('/newelement', NewElementForm),
     ('/about', AboutPage),
     ('/output', DownloadPage)
 ], debug=True)

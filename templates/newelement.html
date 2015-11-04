@@ -1,0 +1,10 @@
+{% import '/templates/requestform.html' as forms %}
+
+{% if type == 'dimension' %}
+
+{% elif type == 'parameter' %}
+
+{% elif type == 'spell_id' %}
+	{{ forms.spell_id_template(idArray[0], idArray[1], idArray[4], spell_id, 'minus') }}
+	{{ forms.spell_id_template(idArray[0], idArray[1], 'new_include_id', none, 'plus') }}
+{% endif %}
