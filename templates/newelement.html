@@ -1,10 +1,14 @@
-{% import '/templates/requestform.html' as forms %}
+{% import '/templates/elementmacros.html' as elements %}
 
 {% if type == 'dimension' %}
 
 {% elif type == 'parameter' %}
 
-{% elif type == 'spell_id' %}
-	{{ forms.spell_id_template(idArray[0], idArray[1], idArray[4], spell_id, 'minus') }}
-	{{ forms.spell_id_template(idArray[0], idArray[1], 'new_include_id', none, 'plus') }}
+{% elif type == 'spell' %}
+	{{ elements.spell_id_template(id_array[0], id_array[1], id_array[4], spell_id, 'minus') }}
+	{% if id_array[2] == 'include' %}
+		{{ elements.spell_id_template(id_array[0], id_array[1], 'new_include_id', none, 'plus') }}
+	{% elif id_array[2] == 'exclude' %}
+		{{ elements.spell_id_template(id_array[0], id_array[1], 'new_exclude_id', none, 'plus') }}
+	{% endif %}
 {% endif %}

@@ -64,7 +64,6 @@ function parseIdArray(element_id) {
 			idArray[2] = element_id.slice(cut + 1);
 		}
 	};
-	console.log(idArray);
 	return idArray;
 };
 
@@ -76,8 +75,11 @@ function addSpell(element_id) {
 		} else if (idArray[2] === 'exclude') {
 			idArray[3] = 2
 		};
-		console.log(idArray[3]);
-		formID[idArray[0]][idArray[1]][idArray[3]] += 1;
+		if ( typeof formID[idArray[0]][idArray[1]][idArray[3]] !== 'undefined') {
+			formID[idArray[0]][idArray[1]][idArray[3]] += 1
+		} else {
+			formID[idArray[0]][idArray[1]][idArray[3]] = 1
+		};
 		idArray[4] = formID[idArray[0]][idArray[1]][idArray[3]]
 	};
 	$.ajax({
@@ -86,8 +88,8 @@ function addSpell(element_id) {
 		url: '/newelement',
 		data: ({
 			'type': 'spell',
-			'idArray': idArray,
-			'element_id': element_id,
+			'id_array': String(idArray),
+			'element_id': String(element_id),
 			'spell_id': $( "input#" + element_id ).val(),
 		}),
 		success: writeElement,
@@ -98,8 +100,15 @@ function writeElement(newElement) {
 	$( "div#" + newElement.element_id ).replaceWith(newElement.template);
 }
 
+function removeElement(element) {
+	$( "div#" + element).hide('slow', function(){ $this.remove(); });
+}
+
 $(document).ready(function() {
 	$( "#selectRequest li a" ).click(selectRequest);
 	$( "#newRequest" ).click(newRequest);
 	$(document).on('click', 'button#spell_id_plus', function(){addSpell(this.value)}); 
+	$(document).on('click', 'button#spell_id_minus', function(){removeElement(this.value)});
+	$(document).on('click', 'button#parameter_minus', function(){removeElement(this.value)});
+	$(document).on('click', 'button#dimension_minus', function(){removeElement(this.value)});
 });

@@ -172,25 +172,25 @@ class SelectRequestForm(webapp2.RequestHandler):
         
 class NewElementForm(webapp2.RequestHandler):
     def post(self):
-    #this needs all the code and template_values still!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        idArray = self.request.get('idArray')
+        id_array = self.request.get('id_array')
         type = self.request.get('type')
         spell_id = self.request.get('spell_id')
         element_id = self.request.get('element_id')
         
+        id_list = id_array.split(",")
+        
         template_values = {
-            'idArray': idArray,
+            'id_array': id_list,
             'type': type,
             'spell_id': spell_id,
             }
-        
         template = JINJA_ENVIRONMENT.get_template("templates/newelement.html")
-        rendered_template = template.render({template_values})
+        rendered_template = template.render(template_values)
         new_element = {
             'template': rendered_template,
             'element_id': element_id,
             }
-        new_element_json = json.dump(new_element)
+        new_element_json = json.dumps(new_element)
         self.response.write(new_element_json)
         
 		
