@@ -1,11 +1,15 @@
 {% import '/templates/elementmacros.html' as elements %}
 
 {% if type == 'dimension' %}
+	{{ elements.dimension_template(id_array[0], input_value, 'minus') }}
+	{{ elements.dimension_template('new_dimension', none, 'plus') }}
 
 {% elif type == 'parameter' %}
+	{{ elements.parameter_template(id_array[0], id_array[1], input_value, 'minus') }}
+	{{ elements.parameter_template(id_array[0], 'new_parameter', none, 'plus') }}
 
 {% elif type == 'spell' %}
-	{{ elements.spell_id_template(id_array[0], id_array[1], id_array[4], spell_id, 'minus') }}
+	{{ elements.spell_id_template(id_array[0], id_array[1], id_array[4], input_value, 'minus') }}
 	{% if id_array[2] == 'include' %}
 		{{ elements.spell_id_template(id_array[0], id_array[1], 'new_include_id', none, 'plus') }}
 	{% elif id_array[2] == 'exclude' %}

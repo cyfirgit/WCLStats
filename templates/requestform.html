@@ -37,6 +37,7 @@
 <div class="row">
 	<div id="dimensions" class="col-sm-12">
 		{% set element_id_dimension = 0 %}
+		<!-- Turn Trinkets section below into macro.  Will lead into no trinkets system. -->
 		{% if request['trinkets'] is defined %}
 			<script>formID[0]=[]</script>
 			<div class="row">
@@ -87,6 +88,6 @@
 				<script>setID('dimension', {{ element_id_dimension }}, 0, 0)</script>
 				{{ elements.dimension_template(element_id_dimension, dimension, 'minus') }}
 		{% endfor %}
-		{{ elements.dimension_template(element_id_dimension, 'new_dimension', 'plus') }}
+		{{ elements.dimension_template('new_dimension', none, 'plus') }}
 	</div>
 </div>

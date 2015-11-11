@@ -4,8 +4,8 @@
 
 #For prototype:
     #Build web interface for pull requests
-        #Add/Remove item functions
         #New reqest option
+        #Change specs when changing class
         #submit form processing code
             #Other Trinkets/Both Other Trinkets options
         #My Pulls page
@@ -174,15 +174,20 @@ class NewElementForm(webapp2.RequestHandler):
     def post(self):
         id_array = self.request.get('id_array')
         type = self.request.get('type')
-        spell_id = self.request.get('spell_id')
+        input_value = self.request.get('input_value')
         element_id = self.request.get('element_id')
         
         id_list = id_array.split(",")
         
+        if type == 'spell':
+            input_value_formatted = input_value
+        else:
+            input_value_formatted = {'name':input_value}
+        
         template_values = {
             'id_array': id_list,
             'type': type,
-            'spell_id': spell_id,
+            'input_value': input_value_formatted,
             }
         template = JINJA_ENVIRONMENT.get_template("templates/newelement.html")
         rendered_template = template.render(template_values)

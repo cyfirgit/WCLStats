@@ -1,5 +1,7 @@
+//formID tracks what elements exist in the form by ID & assigns unique IDs
 var formID = [];
 
+//used by the html templating in a script to increment formID when loading an existing request
 function setID(idType, dimension, parameter, spell_id) {
 	if (idType === 'dimension') {
 		formID[dimension] = [];
@@ -14,6 +16,7 @@ function setID(idType, dimension, parameter, spell_id) {
 	};	
 };
 
+//when a request is selected from the dropdown, loads it into the request builder
 function selectRequest() {
 	var selectedRequest = this.id;
 	$( '#requestName' ).val(selectedRequest);
@@ -24,14 +27,17 @@ function selectRequest() {
 	$.post('/selectrequestform', data, buildRequest, 'html');
 };
 
+//creates a blank request XXX THIS NEEDS WORK XXX
 function newRequest() {
 	$.post('/selectrequestform', {request:"new"}, buildRequest, 'html');
 };
 
+//loads the response from POST when selecting a new/exisiting request
 function buildRequest(requestForm) {
 	$("#requestForm").html(requestForm);
 };
 
+//takes the html element ID and breaks it into an array that can interface with formID
 function parseIdArray(element_id) {
 	var idArray = []
 	
@@ -61,15 +67,22 @@ function parseIdArray(element_id) {
 		} else if (element_id.indexOf('exclude') > -1) {
 			idArray[2] = 'exclude';
 		} else {
-			idArray[2] = element_id.slice(cut + 1);
+			idArray[2] = str1.slice(cut1 + 1);
 		}
 	};
 	return idArray;
 };
 
+//Adds a user-entered spellID to the request and creates a new input box for further spells
 function addSpell(element_id) {
-	if ( typeof $( "input#" + element_id ).val() !== 'undefined') {
+	if ( $.isNumeric( $( "input#" + element_id ).val() )) {
 		var idArray = parseIdArray(element_id);
+		/* idArray components:
+			[0] = dimension index
+			[1] = parameter index
+			[2] = 'include' or 'exclude'
+			[3] = spellID index
+		*/
 		if (idArray[2] === 'include') {
 			idArray[3] = 1
 		} else if (idArray[2] === 'exclude') {
@@ -81,19 +94,65 @@ function addSpell(element_id) {
 			formID[idArray[0]][idArray[1]][idArray[3]] = 1
 		};
 		idArray[4] = formID[idArray[0]][idArray[1]][idArray[3]]
+		$.ajax({
+			dataType: "json",
+			type: "post",
+			url: '/newelement',
+			data: ({
+				'type': 'spell',
+				'id_array': String(idArray),
+				'element_id': String(element_id),
+				'input_value': $( "input#" + element_id ).val(),
+			}),
+			success: writeElement,
+		});
 	};
-	$.ajax({
-		dataType: "json",
-		type: "post",
-		url: '/newelement',
-		data: ({
-			'type': 'spell',
-			'id_array': String(idArray),
-			'element_id': String(element_id),
-			'spell_id': $( "input#" + element_id ).val(),
-		}),
-		success: writeElement,
-	})
+};
+
+//Adds a user-entered parameter to the request and creates a new input box for further parameters
+function addParameter(element_id) {
+	if ( $( "input#" + element_id ).val() !== "") {
+		var idArray = parseIdArray(element_id);
+		/* idArray components:
+			[0] = dimension index
+			[1] = parameter index (This should be 'new' after parseIdArray())
+		*/
+		formID[idArray[0]].push([]);
+		idArray[1] = formID[idArray[0]].length;
+		$.ajax({
+			dataType: "json",
+			type: "post",
+			url: '/newelement',
+			data: ({
+				'type': 'parameter',
+				'id_array': String(idArray),
+				'element_id': String(element_id),
+				'input_value': $( "input#" + element_id ).val(),
+			}),
+			success: writeElement,
+		});
+	};
+};
+
+//Adds a user-entered dimension to the request and creates a new input box for further dimensions
+function addDimension(element_id) {
+	if ( $( "input#" + element_id ).val() !== "") {
+		var idArray = []
+		formID.push([]);
+		idArray[0] = formID.length;
+		$.ajax({
+			dataType: "json",
+			type: "post",
+			url: '/newelement',
+			data: ({
+				'type': 'dimension',
+				'id_array': String(idArray),
+				'element_id': String(element_id),
+				'input_value': $( "input#" + element_id ).val(),
+			}),
+			success: writeElement,
+		});
+	};
 };
 
 function writeElement(newElement) {
@@ -101,14 +160,25 @@ function writeElement(newElement) {
 }
 
 function removeElement(element) {
-	$( "div#" + element).hide('slow', function(){ $this.remove(); });
+	$( "div#" + element).hide('slow', function(){ $(this).remove(); });
+}
+
+function chevronToggle(element) {
+	if( $( element ).find('span.glyphicon-chevron-down').length != 0) {
+		$( element ).html('<span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>')
+	} else if( $( element ).find('span.glyphicon-chevron-right').length != 0) {
+		$( element ).html('<span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>')
+	}
 }
 
 $(document).ready(function() {
 	$( "#selectRequest li a" ).click(selectRequest);
 	$( "#newRequest" ).click(newRequest);
-	$(document).on('click', 'button#spell_id_plus', function(){addSpell(this.value)}); 
+	$(document).on('click', 'button#spell_id_plus', function(){addSpell(this.value)});
+	$(document).on('click', 'button#parameter_plus', function(){addParameter(this.value)}); 
+	$(document).on('click', 'button#dimension_plus', function(){addDimension(this.value)}); 
 	$(document).on('click', 'button#spell_id_minus', function(){removeElement(this.value)});
 	$(document).on('click', 'button#parameter_minus', function(){removeElement(this.value)});
 	$(document).on('click', 'button#dimension_minus', function(){removeElement(this.value)});
+	$(document).on('click', 'button#chevron-toggle', function(){chevronToggle(this)});
 });
