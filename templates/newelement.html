@@ -15,4 +15,14 @@
 	{% elif id_array[2] == 'exclude' %}
 		{{ elements.spell_id_template(id_array[0], id_array[1], 'new_exclude_id', none, 'plus') }}
 	{% endif %}
+	
+{% elif type == 'trinkets' %}
+	{{ elements.trinkets([], True) }}
+
+{% elif type == 'no_trinkets' %}
+	{{ elements.no_trinkets() }}
+	
+{% elif type == 'specializations' %}
+	{{ elements.specializations_template(classes, input_value, none) }}
+	
 {% endif %}

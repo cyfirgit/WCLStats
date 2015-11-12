@@ -4,30 +4,29 @@
 <div class="row">
 	<div class="col-sm-3">
 		<select id="characterClass" class="form-control">
+			{% if request['character_class'] == 'new' %}
+				<optgroup>
+					<option value="" disabled selected>Select a class</option>
+				<optgroup>
+			{% endif %}
 			{% for class_ in classes %}
-				<option value="{{ class_['id'] }}" 
-					{% if class_['id'] == request['character_class'] %}
-						selected="selected" 
-					{% endif %}>
-					{{ class_['name'] }}
-				</option>
+				<optgroup>
+					<option value="{{ class_['id'] }}" 
+						{% if class_['id'] == request['character_class'] %}
+							selected="selected" 
+						{% endif %}>
+						{{ class_['name'] }}
+					</option>
+				</optgroup>
 			{% endfor %}
 		</select>
 	</div>
 	<div id="indent" class="col-sm-1"></div>
-	<div class="col-sm-4">
-		<div class="checkbox" id="specializations">
-			{% for specialization in classes[request['class_index']]['specs'] %}
-				<label class="checkbox">
-					<input type="checkbox" value="{{ specialization['id'] }}"
-					{% if specialization['id'] in request['specializations'] %}
-						checked
-					{% endif %}>
-					{{ specialization['name'] }}
-				</label>
-			{% endfor %}
-		</div>
-	</div>
+		{% if request_type == 'existing' %}
+			{{ elements.specializations_template(classes, request['class_index'], request['specializations']) }}
+		{% else %}
+			{{ elements.specializations_template(none, -1, none) }}
+		{% endif %}
 </div>
 <div class="row">
 	<div class="col-sm-2">
@@ -36,52 +35,12 @@
 </div>
 <div class="row">
 	<div id="dimensions" class="col-sm-12">
-		{% set element_id_dimension = 0 %}
 		<!-- Turn Trinkets section below into macro.  Will lead into no trinkets system. -->
-		{% if request['trinkets'] is defined %}
-			<script>formID[0]=[]</script>
-			<div class="row">
-				<div class="col-sm-5">
-					<div class="input-group">
-						<input type="text" class="form-control" value="Trinkets">
-						<span class="input-group-btn">
-							<button class="btn btn-danger" type="button">
-								<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
-							</button>
-						</span>
-					</div>
-				</div>
-			</div>
-			<div class="row">
-				<div class="col-sm-1" id="indent"></div>
-				<div class="col-sm-11">
-					<div class="row bottom-buffer">
-						<h4>Trinkets</h4>
-						<label class="checkbox-inline">
-							<input type="checkbox" id="includeOtherTrinkets"
-								{% if request['other_trinkets'] == True %}
-									checked
-								{% endif %}>
-							Include Other Trinkets
-						</label>
-					</div>
-					{% set start_id_parameter = 1 %}
-					{% for trinket in request['trinkets'] %}
-						{% set element_id_parameter = start_id_parameter + loop.index0 %}
-							<script>setID('parameter', {{ element_id_dimension }}, {{ element_id_parameter }}, 0)</script>
-							{{ elements.parameter_template(element_id_dimension, element_id_parameter, trinket, 'minus') }}
-					{% endfor %}
-					{{ elements.parameter_template(element_id_dimension, 'new_parameter', none, 'plus') }}
-				</div>
-			</div>
-			<div class="row bottom-buffer">
-				<div class="col-sm-10">
-					<hr>
-				</div>
-			</div>
-		{% else %}
-			<!-- Include trinkets code -->
-		{% endif %}
+			{% if request['trinkets'] is defined %}
+				{{ elements.trinkets(request['trinkets'], request['other_trinkets']) }}
+			{% else %}
+				{{ elements.no_trinkets() }}
+			{% endif %}
 		{% set start_id_dimension = 1 %}
 		{% for dimension in request['dimensions'] %}
 			{% set element_id_dimension = start_id_dimension + loop.index0 %}

@@ -4,10 +4,8 @@
 
 #For prototype:
     #Build web interface for pull requests
-        #New reqest option
-        #Change specs when changing class
         #submit form processing code
-            #Other Trinkets/Both Other Trinkets options
+            #remember: Other Trinkets/Both Other Trinkets options
         #My Pulls page
     #Add user account controls
 
@@ -117,44 +115,45 @@ class BuildRequestForm(webapp2.RequestHandler):
     
 class SelectRequestForm(webapp2.RequestHandler):
     def post(self):
-        #Query NDB for the request and its dimensions and parameters.
+        request_type = self.request.get('request_type')
         selected_request = self.request.get('request')
-        request_complete = Request.query(Request.name == selected_request).fetch()[0]
-        dimensions_qry = ndb.get_multi(request_complete.dimensions)
-        dimensions = []
-        for dimension in dimensions_qry:
-            parameters_qry = ndb.get_multi(dimension.parameters)
-            parameters = []
-            for parameter in parameters_qry:
-                parameters.append({
-                    "name": parameter.name,
-                    "include": parameter.include,
-                    "exclude": parameter.exclude
-                    })
-            dimensions.append({
-                "name": dimension.name,
-                "parameters": parameters
-                })
-        trinkets_keys = Dimension.get_by_id(request_complete.trinket_dimension.id())
-        other_trinkets = trinkets_keys.other_trinkets
-        trinkets_objects = ndb.get_multi(trinkets_keys.parameters)
-        trinkets = []
-        for trinket in trinkets_objects:
-            new_trinket = {
-                'name': trinket.name,
-                'include': trinket.include,
-                'exclude': trinket.exclude
-                }
-            trinkets.append(new_trinket)
-                
-        #Pass class and spec data to the form for dropdowns.
         classes = Reference.get_by_id("wcl_classes").json
-        for class_ in classes:
-            if class_['id'] == request_complete.character_class:
-                class_index = classes.index(class_)
+        if request_type == 'existing':
+            #Query NDB for the request and its dimensions and parameters.
+            request_complete = Request.query(Request.name == selected_request).fetch()[0]
+            dimensions_qry = ndb.get_multi(request_complete.dimensions)
+            dimensions = []
+            for dimension in dimensions_qry:
+                parameters_qry = ndb.get_multi(dimension.parameters)
+                parameters = []
+                for parameter in parameters_qry:
+                    parameters.append({
+                        "name": parameter.name,
+                        "include": parameter.include,
+                        "exclude": parameter.exclude
+                        })
+                dimensions.append({
+                    "name": dimension.name,
+                    "parameters": parameters
+                    })
+            trinkets_keys = Dimension.get_by_id(request_complete.trinket_dimension.id())
+            other_trinkets = trinkets_keys.other_trinkets
+            trinkets_objects = ndb.get_multi(trinkets_keys.parameters)
+            trinkets = []
+            for trinket in trinkets_objects:
+                new_trinket = {
+                    'name': trinket.name,
+                    'include': trinket.include,
+                    'exclude': trinket.exclude
+                    }
+                trinkets.append(new_trinket)
                 
-        template_values = {
-            'request': {
+            #Flag the class in the request as selected
+            for class_ in classes:
+                if class_['id'] == request_complete.character_class:
+                    class_index = classes.index(class_)
+                    
+            request_data = {
                 'selected_request': selected_request,
                 'character_class': request_complete.character_class,
                 'specializations': request_complete.specialization,
@@ -162,9 +161,18 @@ class SelectRequestForm(webapp2.RequestHandler):
                 'trinkets': trinkets,
                 'other_trinkets': other_trinkets,
                 'class_index': class_index,
-                },
+                }
+        else:
+            request_data = {
+                'selected_request': selected_request,
+                'character_class': 'new',
+                }
+            
+        template_values = {
+            'request_type': request_type,
+            'request': request_data,
             'classes': classes,
-            }
+        }
         
         template = JINJA_ENVIRONMENT.get_template("templates/requestform.html")
         self.response.write(template.render(template_values))
@@ -181,14 +189,20 @@ class NewElementForm(webapp2.RequestHandler):
         
         if type == 'spell':
             input_value_formatted = input_value
+        elif type == 'specializations':
+            input_value_formatted = int(input_value) - 1
         else:
             input_value_formatted = {'name':input_value}
-        
+            
         template_values = {
             'id_array': id_list,
             'type': type,
             'input_value': input_value_formatted,
             }
+        if type == 'specializations':
+            classes = Reference.get_by_id("wcl_classes").json
+            template_values['classes'] = classes
+            
         template = JINJA_ENVIRONMENT.get_template("templates/newelement.html")
         rendered_template = template.render(template_values)
         new_element = {

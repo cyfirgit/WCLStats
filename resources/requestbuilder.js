@@ -22,14 +22,25 @@ function selectRequest() {
 	$( '#requestName' ).val(selectedRequest);
 	
 	var data = {
-		request: selectedRequest
+		request: selectedRequest,
+		request_type: 'existing',
 	}
 	$.post('/selectrequestform', data, buildRequest, 'html');
 };
 
-//creates a blank request XXX THIS NEEDS WORK XXX
+//creates a blank request
 function newRequest() {
-	$.post('/selectrequestform', {request:"new"}, buildRequest, 'html');
+	var selectedRequest = $( '#requestName' ).val();
+	if (selectedRequest !== '') {
+		//If the new request has a name, process it.
+		var data = {
+			request: selectedRequest,
+			request_type: 'new',
+		};
+		$.post('/selectrequestform', data, buildRequest, 'html');
+	} /*else {
+		//Warn that a new request needs a name  XXX ADD THIS XXX
+	}*/;
 };
 
 //loads the response from POST when selecting a new/exisiting request
@@ -155,25 +166,73 @@ function addDimension(element_id) {
 	};
 };
 
+function addTrinkets() {
+	$.ajax({
+		dataType: "json",
+		type: "post",
+		url: '/newelement',
+		data: ({
+			'type': 'trinkets',
+			'id_array': '',
+			'element_id': 'trinketsContainer',
+			'input_value': '',
+		}),
+		success: writeElement,
+	});
+};
+
 function writeElement(newElement) {
 	$( "div#" + newElement.element_id ).replaceWith(newElement.template);
-}
+};
 
 function removeElement(element) {
 	$( "div#" + element).hide('slow', function(){ $(this).remove(); });
-}
+};
+
+function removeTrinkets() {
+	$.ajax({
+		dataType: "json",
+		type: "post",
+		url: '/newelement',
+		data: ({
+			'type': 'no_trinkets',
+			'id_array': '',
+			'element_id': 'trinketsContainer',
+			'input_value': '',
+		}),
+		success: writeElement,
+	});
+};
 
 function chevronToggle(element) {
 	if( $( element ).find('span.glyphicon-chevron-down').length != 0) {
 		$( element ).html('<span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>')
 	} else if( $( element ).find('span.glyphicon-chevron-right').length != 0) {
 		$( element ).html('<span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>')
-	}
+	};
+};
+
+function changeClass(characterClass) {
+	$.ajax({
+		dataType: "json",
+		type: "post",
+		url: '/newelement',
+		data: ({
+			'type': 'specializations',
+			'id_array': '',
+			'element_id': 'specializationsContainer',
+			'input_value': characterClass,
+		}),
+		success: writeElement,
+	});
 }
 
 $(document).ready(function() {
 	$( "#selectRequest li a" ).click(selectRequest);
 	$( "#newRequest" ).click(newRequest);
+	$(document).on('change', 'select#characterClass', function(){changeClass(this.value)});
+	$(document).on('click', 'button#addTrinkets', function(){addTrinkets()});
+	$(document).on('click', 'button#removeTrinkets', function(){removeTrinkets()});
 	$(document).on('click', 'button#spell_id_plus', function(){addSpell(this.value)});
 	$(document).on('click', 'button#parameter_plus', function(){addParameter(this.value)}); 
 	$(document).on('click', 'button#dimension_plus', function(){addDimension(this.value)}); 

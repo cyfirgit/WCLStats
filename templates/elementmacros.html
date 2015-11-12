@@ -108,6 +108,83 @@
 	</div>
 {%- endmacro %}
 
+{% macro specializations_template(classes, index, specializations) -%}
+	<div class="col-sm-4" id="specializationsContainer">
+		{% if index != -1 %}
+			<div class="checkbox" id="specializations">
+				{% for specialization in classes[index]['specs'] %}
+					<label class="checkbox">
+						<input type="checkbox" value="{{ specialization['id'] }}"
+						{% if specializations != none %}
+							{% if specialization['id'] in specializations %}
+								checked
+							{% endif %}
+						{% endif %}>
+						{{ specialization['name'] }}
+					</label>
+				{% endfor %}
+			</div>
+		{% endif %}
+	</div>
+{%- endmacro %}
+
+{% macro trinkets(trinkets, other_trinkets) -%}
+	<div id="trinketsContainer">
+		{% set element_id_dimension = 0 %}
+		<script>formID[0]=[]</script>
+		<div class="row">
+			<div class="col-sm-5">
+				<div class="input-group">
+					<input type="text" class="form-control" value="Trinkets" disabled>
+					<span class="input-group-btn">
+						<button class="btn btn-danger" type="button" id="removeTrinkets">
+							<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+						</button>
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-sm-1" id="indent"></div>
+			<div class="col-sm-11">
+				<div class="row bottom-buffer">
+					<h4>Trinkets</h4>
+					<label class="checkbox-inline">
+						<input type="checkbox" id="includeOtherTrinkets"
+							{% if other_trinkets == True %}
+								checked
+							{% endif %}>
+						Include Other Trinkets
+					</label>
+				</div>
+				{% set start_id_parameter = 1 %}
+				{% for trinket in trinkets %}
+					{% set element_id_parameter = start_id_parameter + loop.index0 %}
+						<script>setID('parameter', {{ element_id_dimension }}, {{ element_id_parameter }}, 0)</script>
+						{{ parameter_template(element_id_dimension, element_id_parameter, trinket, 'minus') }}
+				{% endfor %}
+				{{ parameter_template(element_id_dimension, 'new_parameter', none, 'plus') }}
+			</div>
+		</div>
+		<div class="row bottom-buffer">
+			<div class="col-sm-10">
+				<hr>
+			</div>
+		</div>
+	</div>
+{%- endmacro %}
+
+{% macro no_trinkets() -%}
+	<div id="trinketsContainer">
+		<div class="row bottom-buffer">
+			<div class="col-sm-5">
+				<button class="btn btn-success" id="addTrinkets" type="button">Add Trinket Dimension</button>
+				<hr>
+			</div>
+		</div>
+	</div>
+{%- endmacro %}
+
 {% macro dimension_template(element_id_dimension, dimension, button_state_dimension) -%}
 	<div id="dimension_{{ element_id_dimension }}">
 	{% set element_id_parameter = 1 %}
