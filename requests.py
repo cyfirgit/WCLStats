@@ -1,8 +1,6 @@
 # coding: utf-8
 
-#Module to interface with external apps and their apis.  This includes the
-#functions to build the rankings data.  Which is probably not the best of
-#organizational schemes, but gets the job done right now.
+#Module to handle structuring and executing requests against external apis.
 
 #Here's the deal: yes, my use of "parameter" and "dimension" is inconsistent as
 #hell.  I totally plan to fix it after I have a working prototype for people to
@@ -21,14 +19,42 @@ class PullTimeoutError(Exception):
 		self.msg = msg
 	
 	
-def rankings_pull_filtered(encounterID, parameters, dimensions):
-	#This is the function that should be the core of any full request.  It uses
+def rankings_pull_filtered(encounterID, parameters, dimensions_keys, trinkets_dimension_key):
+	#This is the function that should be the core of any request pull.  It uses
 	#the other functions below to actually structure, scale, and implement the
-	#request.
+	#pull.
 	
-	filters = build_filters(dimensions)
+    dimensions = {}
 	result = []
-	
+    
+    #Pull NDB objects from stored keys and store them in a dictionary.
+    ''' Dictionary goes out as:
+        {
+            "dimension name": {
+                "parameter name": {
+                    "include": [spell_id, spell_id] OR None,
+                    "exclude": [spell_id, spell_id] OR None
+                    }
+                }
+            }
+        '''
+    dimensions_objects = ndb.get_multi(dimensions_keys)
+    for dimension in dimensions_objects:
+        dimensions[dimension.name] = {}
+        parameters = ndb.get_multi(dimension.parameters)
+        for parameter in parameters:
+        dimensions[dimension.name][parameter.name] = {
+            "include": parameter.include,
+            "exclude": parameter.exclude
+            }
+    #Add a dimension for trinkets if the request analyzes trinkets.
+    if trinkets_dimension_key != None:
+        trinkets_keys = Dimension.get_by_id(trinkets_dimension_key.id()).parameters
+        trinkets = ndb.get_multi(trinkets_keys)
+        dimensions["Trinkets"] = build_trinket_dimensions(trinkets)
+    
+    #Build a list of filters to pull against from WCL, then send the pulls.
+	filters = build_filters(dimensions)
 	for filter in filters:
 		get_filter = []
 		pull_parameters = parameters
@@ -124,27 +150,28 @@ def build_filters(dimensions):
 		
 	
 def build_trinket_dimensions(trinkets):
-	#Take a set of trinket options and generate a dimensions dictinary that can
+	#Take a set of trinket options and generate a dimensions dictionary that can
 	#be appended to the other dimensions.  This function will always return a 
 	#list of dimensions that only factors in the selected trinkets; the user
 	#must specifically include "Other Trinkets" as a trinket choice to see e.g.
 	#ranks where only one of the selected trinkets is in use.
-	''' Trinkets come in as:
-	[
-		{
-			"name": "",
-			"include": [1, 2, ... n],
-			"exclude": [1, 2, ... n]
-			}
-		]
-	Dictionary goes out as:
-	{
-		"Trinket1|Trinket2": {
-			"include": [1, 2, ... n],
-			"exclude": [1, 2, ... n]
-			}
-		}
-	'''
+        ''' Trinkets come in as:
+            [
+                {
+                    "name": "",
+                    "include": [1, 2, ... n],
+                    "exclude": [1, 2, ... n]
+                    }
+                ]
+            
+            Dictionary goes out as:
+            {
+                "Trinket1|Trinket2": {
+                    "include": [1, 2, ... n],
+                    "exclude": [1, 2, ... n]
+                    }
+                }
+            '''
 	slot = [0,1]
 	result = {}
 	trinkets_exclude_all = []
@@ -156,9 +183,9 @@ def build_trinket_dimensions(trinkets):
 	#trinket considered.  During this loop we'll also flag to construct a
 	#dimension for "Both Other Trinkets"
 	for trinket in trinkets:
-		if trinket["include"] != None:
-			trinkets_exclude_all += trinket["include"]
-		if trinket["name"] == "Both Other Trinkets":
+		if trinket.include != None:
+			trinkets_exclude_all += trinket.include
+		if trinket.name == "Both Other Trinkets":
 			both_other_trinkets_flag = True
 			kill_index = trinkets.index(trinket)
 	if kill_index != None:
@@ -177,31 +204,31 @@ def build_trinket_dimensions(trinkets):
 	
 		#If one of the trinkets is "Other Trinkets", apply an "exclude" to it
 		#equal to the "include" of every trinket except the paired counterpart.
-		if trinkets[slot[0]]["name"] == "Other Trinkets":
+		if trinkets[slot[0]].name == "Other Trinkets":
 			other_trinkets_exclude = list(trinkets_exclude_all)
-			for i in range(len(trinkets[slot[1]]["include"])):
-				other_trinkets_exclude.remove(trinkets[slot[1]]["include"][i])
-			trinkets[slot[0]]["exclude"] = other_trinkets_exclude
-		elif trinkets[slot[1]]["name"] == "Other Trinkets":
+			for i in range(len(trinkets[slot[1]].include)):
+				other_trinkets_exclude.remove(trinkets[slot[1]].include[i])
+			trinkets[slot[0]].exclude = other_trinkets_exclude
+		elif trinkets[slot[1]].name == "Other Trinkets":
 			other_trinkets_exclude = list(trinkets_exclude_all)
-			for i in range(len(trinkets[slot[0]]["include"])):
-				other_trinkets_exclude.remove(trinkets[slot[0]]["include"][i])
-			trinkets[slot[1]]["exclude"] = other_trinkets_exclude
+			for i in range(len(trinkets[slot[0]].include)):
+				other_trinkets_exclude.remove(trinkets[slot[0]].include[i])
+			trinkets[slot[1]].exclude = other_trinkets_exclude
 		
 		
 		pair = {"include": [], "exclude": []}
-		name = trinkets[slot[0]]["name"] + "|" + trinkets[slot[1]]["name"]
-		if trinkets[slot[0]]["include"] != None:
-			pair["include"] += trinkets[slot[0]]["include"]
-		if trinkets[slot[1]]["include"] != None:
-			pair["include"] += trinkets[slot[1]]["include"]
-		if trinkets[slot[0]]["exclude"] != None:
-			pair["exclude"] += trinkets[slot[0]]["exclude"]
-		if trinkets[slot[1]]["exclude"] != None:
-			pair["exclude"] += trinkets[slot[1]]["exclude"]
+		name = trinkets[slot[0]].name + "|" + trinkets[slot[1]]["name"]
+		if trinkets[slot[0]].include != None:
+			pair["include"] += trinkets[slot[0]].include
+		if trinkets[slot[1]].include != None:
+			pair["include"] += trinkets[slot[1]].include
+		if trinkets[slot[0]].exclude != None:
+			pair["exclude"] += trinkets[slot[0]].exclude
+		if trinkets[slot[1]].exclude != None:
+			pair["exclude"] += trinkets[slot[1]].exclude
 			
 		if len(pair["include"]) == 0:
-			pair["incldue"] = None
+			pair["include"] = None
 		if len(pair["exclude"]) == 0:
 			pair["exclude"] = None
 		

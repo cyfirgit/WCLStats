@@ -22,7 +22,7 @@ import json
 
 from google.appengine.ext import ndb
 
-import apirequests
+import requests
 import exportdata
 
 
@@ -224,7 +224,7 @@ class AboutPage(webapp2.RequestHandler):
 class DownloadPage(webapp2.RequestHandler):
     def post(self):
         logging.info("***Beginning Frost Pull***")
-        pull = apirequests.rankings_pull_filtered(boss, frost_parameters, frost_dimensions)
+        pull = requests.rankings_pull_filtered(boss, frost_parameters, frost_dimensions)
         logging.info("***Compiling frost.csv data***")
         output = exportdata.csv_output(pull, frost_dimensions)
         self.response.headers["Content-Type"] = "application/csv"
@@ -233,8 +233,8 @@ class DownloadPage(webapp2.RequestHandler):
     
         
 def initialize():
-    class_data = apirequests.static_request("WCL", "classes")
-    zone_data = apirequests.static_request("WCL", "zones")
+    class_data = requests.static_request("WCL", "classes")
+    zone_data = requests.static_request("WCL", "zones")
     difficulties_manual = [
         {
             "id": 1,
