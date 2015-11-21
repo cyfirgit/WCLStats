@@ -9,11 +9,11 @@
 	{{ elements.parameter_template(id_array[0], 'new_parameter', none, 'plus') }}
 
 {% elif type == 'spell' %}
-	{{ elements.spell_id_template(id_array[0], id_array[1], id_array[4], input_value, 'minus') }}
+	{{ elements.spell_id_template(id_array[0], id_array[1], id_array[4], id_array[3], input_value, 'minus') }}
 	{% if id_array[2] == 'include' %}
-		{{ elements.spell_id_template(id_array[0], id_array[1], 'new_include_id', none, 'plus') }}
+		{{ elements.spell_id_template(id_array[0], id_array[1], 'include_id', 'new', none, 'plus') }}
 	{% elif id_array[2] == 'exclude' %}
-		{{ elements.spell_id_template(id_array[0], id_array[1], 'new_exclude_id', none, 'plus') }}
+		{{ elements.spell_id_template(id_array[0], id_array[1], 'exclude_id', 'new', none, 'plus') }}
 	{% endif %}
 	
 {% elif type == 'trinkets' %}

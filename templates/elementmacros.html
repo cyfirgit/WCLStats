@@ -1,10 +1,11 @@
-{% macro spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, spell_id, button_state_spell_id) -%}
-	<div id="spell_id_{{ element_id_dimension }}_{{ element_id_parameter }}_{{ element_id_spell_id }}">
+{% macro spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, element_id_spell_type, spell_id, button_state_spell_id) -%}
+	<div id="spell_id_{{ element_id_dimension }}_{{ element_id_parameter }}_{{ element_id_spell_type }}_{{ element_id_spell_id }}">
 		<div class="row">
 			<div class="input-group">
 				<input 
 					type="text" 
-					id="spell_id_{{ element_id_dimension }}_{{ element_id_parameter }}_{{ element_id_spell_id }}"
+					id="spell_id_{{ element_id_dimension }}_{{ element_id_parameter }}_{{ element_id_spell_type }}_{{ element_id_spell_id }}"
+					name="spell_id_{{ element_id_dimension }}_{{ element_id_parameter }}_{{ element_id_spell_type }}_{{ element_id_spell_id }}"
 					class="form-control" 
 					{% if spell_id == none %}
 						placeholder="Add spell ID"
@@ -20,7 +21,7 @@
 						{% endif %}
 						type="button" 
 						id="spell_id_{{ button_state_spell_id }}" 
-						value="spell_id_{{ element_id_dimension }}_{{ element_id_parameter }}_{{ element_id_spell_id }}">
+						value="spell_id_{{ element_id_dimension }}_{{ element_id_parameter }}_{{ element_id_spell_type }}_{{ element_id_spell_id }}">
 						<span 
 							{% if button_state_spell_id == 'minus' %}
 								class="glyphicon glyphicon-minus"
@@ -43,6 +44,7 @@
 					<input 
 						type="text"
 						id="parameter_{{ element_id_dimension }}_{{ element_id_parameter }}"
+						name="parameter_{{ element_id_dimension }}_{{ element_id_parameter }}"
 						class="form-control" 
 							{% if parameter == none %}
 								placeholder="Add parameter" 
@@ -83,7 +85,7 @@
 							<script>setID('spell_id', {{ element_id_dimension }}, {{ element_id_parameter }}, {{ element_id_spell_id }})</script>
 							{{ spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, spell_id, 'minus') }}
 					{% endfor %}
-					{{ spell_id_template(element_id_dimension, element_id_parameter, 'new_include_id', none, 'plus') }}
+					{{ spell_id_template(element_id_dimension, element_id_parameter, 'include_id', 'new', none, 'plus') }}
 				</div>
 				<div class="col-sm-1" id="indent"></div>
 				<div class="col-sm-3">
@@ -96,7 +98,7 @@
 							<script>setID('spell_id', {{ element_id_dimension }}, {{ element_id_parameter }}, {{ element_id_spell_id }})</script>
 							{{ spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, spell_id, 'minus') }}
 					{% endfor %}
-					{{ spell_id_template(element_id_dimension, element_id_parameter, 'new_exclude_id', none, 'plus') }}
+					{{ spell_id_template(element_id_dimension, element_id_parameter, 'exclude_id', 'new', none, 'plus') }}
 				</div>
 			</div>
 			<div class="row bottom-buffer">
@@ -114,7 +116,7 @@
 			<div class="checkbox" id="specializations">
 				{% for specialization in classes[index]['specs'] %}
 					<label class="checkbox">
-						<input type="checkbox" value="{{ specialization['id'] }}"
+						<input type="checkbox" value="{{ specialization['id'] }}" name="{{ specialization['id'] }}"
 						{% if specializations != none %}
 							{% if specialization['id'] in specializations %}
 								checked
@@ -135,7 +137,7 @@
 		<div class="row">
 			<div class="col-sm-5">
 				<div class="input-group">
-					<input type="text" class="form-control" value="Trinkets" disabled>
+					<input type="text" class="form-control" value="Trinkets" value="Trinkets" disabled>
 					<span class="input-group-btn">
 						<button class="btn btn-danger" type="button" id="removeTrinkets">
 							<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
@@ -150,14 +152,14 @@
 				<div class="row bottom-buffer">
 					<h4>Trinkets</h4>
 					<label class="checkbox-inline">
-						<input type="checkbox" id="includeOtherTrinkets"
+						<input type="checkbox" id="includeOtherTrinkets" name="includeOtherTrinkets"
 							{% if other_trinkets == True %}
 								checked
 							{% endif %}>
 						Include Other Trinkets
 					</label>
 				</div>
-				{% set start_id_parameter = 1 %}
+				{% set start_id_parameter = 0 %}
 				{% for trinket in trinkets %}
 					{% set element_id_parameter = start_id_parameter + loop.index0 %}
 						<script>setID('parameter', {{ element_id_dimension }}, {{ element_id_parameter }}, 0)</script>
@@ -201,6 +203,7 @@
 					<input 
 						type="text"
 						id="dimension_{{ element_id_dimension }}"
+						name="dimension_{{ element_id_dimension }}"
 						class="form-control" 
 							{% if dimension == none %}
 								placeholder="Add dimension" 
@@ -236,7 +239,7 @@
 					<div class="row bottom-buffer">
 						<h4>Parameters</h4>
 					</div>
-					{% set start_id_parameter = 1 %}
+					{% set start_id_parameter = 0 %}
 					{% for parameter in dimension['parameters'] %}
 						{% set element_id_parameter = start_id_parameter + loop.index0 %}
 						<script>setID('parameter', {{ element_id_dimension }}, {{ element_id_parameter }}, 0)</script>

@@ -3,7 +3,7 @@
 <!-- Begin Request Builder Form -->
 <div class="row">
 	<div class="col-sm-3">
-		<select id="characterClass" class="form-control">
+		<select id="characterClass" class="form-control" name="character_class">
 			{% if request['character_class'] == 'new' %}
 				<optgroup>
 					<option value="" disabled selected>Select a class</option>
@@ -35,7 +35,6 @@
 </div>
 <div class="row">
 	<div id="dimensions" class="col-sm-12">
-		<!-- Turn Trinkets section below into macro.  Will lead into no trinkets system. -->
 			{% if request['trinkets'] is defined %}
 				{{ elements.trinkets(request['trinkets'], request['other_trinkets']) }}
 			{% else %}
@@ -50,3 +49,10 @@
 		{{ elements.dimension_template('new_dimension', none, 'plus') }}
 	</div>
 </div>
+			<div class="row">
+				<div class="col-sm-12">
+					<button class="btn btn-primary" id="btnSubmitRequest" type="submit">
+						Save Request
+					</button>
+				</div>
+			</div>

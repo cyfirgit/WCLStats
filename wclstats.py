@@ -110,7 +110,9 @@ class RequestBuilderPage(webapp2.RequestHandler):
         
 class BuildRequestForm(webapp2.RequestHandler):
     def post(self):
-        pass
+        request_all = self.request.arguments()
+        logging.info(request_all)
+        self.response.write(request_all)
     
     
 class SelectRequestForm(webapp2.RequestHandler):

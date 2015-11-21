@@ -1,5 +1,5 @@
 //formID tracks what elements exist in the form by ID & assigns unique IDs
-var formID = [];
+var formID = [[]];
 
 //used by the html templating in a script to increment formID when loading an existing request
 function setID(idType, dimension, parameter, spell_id) {
@@ -105,6 +105,8 @@ function addSpell(element_id) {
 			formID[idArray[0]][idArray[1]][idArray[3]] = 1
 		};
 		idArray[4] = formID[idArray[0]][idArray[1]][idArray[3]]
+		console.log(String(idArray));
+		console.log(String(element_id));
 		$.ajax({
 			dataType: "json",
 			type: "post",
@@ -129,7 +131,7 @@ function addParameter(element_id) {
 			[1] = parameter index (This should be 'new' after parseIdArray())
 		*/
 		formID[idArray[0]].push([]);
-		idArray[1] = formID[idArray[0]].length;
+		idArray[1] = formID[idArray[0]].length - 1;
 		$.ajax({
 			dataType: "json",
 			type: "post",
@@ -150,7 +152,7 @@ function addDimension(element_id) {
 	if ( $( "input#" + element_id ).val() !== "") {
 		var idArray = []
 		formID.push([]);
-		idArray[0] = formID.length;
+		idArray[0] = formID.length - 1;
 		$.ajax({
 			dataType: "json",
 			type: "post",
@@ -227,7 +229,15 @@ function changeClass(characterClass) {
 	});
 }
 
+function checkEnter(e){
+	//Stop the enter key from submitting the form.
+	 e = e || event;
+	 var txtArea = /textarea/i.test((e.target || e.srcElement).tagName);
+	 return txtArea || (e.keyCode || e.which || e.charCode || 0) !== 13;
+}
+
 $(document).ready(function() {
+	document.querySelector('form').onkeypress = checkEnter;
 	$( "#selectRequest li a" ).click(selectRequest);
 	$( "#newRequest" ).click(newRequest);
 	$(document).on('change', 'select#characterClass', function(){changeClass(this.value)});
