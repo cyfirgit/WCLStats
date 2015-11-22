@@ -20,10 +20,13 @@ import webapp2
 import logging
 import json
 
+import pprint
+
 from google.appengine.ext import ndb
 
 import requests
 import exportdata
+
 
 
 JINJA_ENVIRONMENT = jinja2.Environment(
@@ -109,10 +112,63 @@ class RequestBuilderPage(webapp2.RequestHandler):
         
         
 class BuildRequestForm(webapp2.RequestHandler):
+    #Process a user-defined request and store in NDB.
     def post(self):
-        request_all = self.request.arguments()
-        logging.info(request_all)
-        self.response.write(request_all)
+        arguments = self.request.arguments()
+        specializations = []
+        dimensions = {}
+        parameters = []
+        includes = []
+        excludes = []
+        
+        #Construct the Request object:
+        new_request = ndb.Request()
+        new_request.specialization = []
+        new_request.dimensions = []
+        for argument in arguments:
+            element = parse_argument(argument)
+            if element != None:
+                if element["type"] == "name":
+                    new_request.name = self.request.get(argument)
+                elif element["type"] == "character_class":
+                    new_request.character_class = int(self.request.get(argument))
+                elif element["type"] == "specialization":
+                    new_request.specialization.append(int(self.request.get(argument)))
+                elif element["type"] == "trinkets":
+                    dimensions[0] = {"name": "Trinkets", "parameters": {}}
+                elif element["type"] == "dimension":
+                    dimensions[element["element_id"]] = {
+                        "name": self.request.get(argument),
+                        "parameters": {}
+                        }
+                elif element["type"] == "parameter":
+                    new_parameter = {
+                        "name": self.request.get(argument),
+                        "include": []
+                        "exclude": []
+                        "element_id": element["element_id"]
+                        }
+                    parameters.append(new_parameter)
+                elif element["type"] == "spell_id":
+                    new_spell_id = {
+                        "spell_id": int(self.request.get(argument)),
+                        "element_id": element["element_id"]
+                        }
+                    if element["element_id"][2] == "include":
+                        includes.append(new_spell_id)
+                    elif element["element_id"][2] == "exclude":
+                        excludes.append(new_spell_id)
+                    else:
+                        logging.error("Could not handle spell id %s" % argument)
+                
+                #Next up: Sort through |parameters| and then |includes| & 
+                #|excludes| and apply them to the appropriate dimension.
+                #Then dump everything into |new_request| and put_multi all the
+                #new NDB objects.
+                
+            
+        
+        self.response.write('Hi')
     
     
 class SelectRequestForm(webapp2.RequestHandler):
@@ -233,6 +289,7 @@ class DownloadPage(webapp2.RequestHandler):
     
         
 def initialize():
+    #Used at service startup to populate NDB with class and zone data.
     class_data = requests.static_request("WCL", "classes")
     zone_data = requests.static_request("WCL", "zones")
     difficulties_manual = [
@@ -285,6 +342,107 @@ def initialize():
     result.append(difficulties)
     
     ndb.put_multi(result)
+    
+def parse_argument(argument):
+    #Takes a form element name and parses it into meaninful data.
+    ''' Expected element names:
+        "request_name"
+        "character_class"
+        "specialization_X"
+        "trinkets"
+        "dimension_A" (A: dimension)
+        "parameter_A_B" (A: dimension, B: parameter)
+        "spell_id_A_B_C_D" (A: dimension, B: parameter, C:include=1,exclude=2
+                            D: spell id index)
+        
+        Returns a dict as follows:
+        {
+            "type": element type,
+            "element_id": [dimension, parameter, spell_id_type, spell_id]**
+            }
+        ** Only exists for dimensions, parameters, and spell ids
+        '''
+    type_slug = argument[:9]
+    if type_slug == "spell_id_":
+        type = "spell_id"
+        if argument.find("new") > -1:
+            #Dimension
+            snip = argument[9:]
+            end_snip = snip.find("_")
+            dimension = int(snip[:end_snip])
+            #Parameter
+            snip_2 = snip[(end_snip + 1):]
+            end_snip = snip_2.find("_")
+            parameter = int(snip_2[:end_snip])
+            #Spell ID Type (include/exclude)
+            snip_3 = snip_2[(end_snip + 1):]
+            end_snip = snip_3.find("_")
+            spell_id_type = int(snip_3[:end_snip])
+            #Spell ID
+            snip_4 = snip_3[(end_snip + 1):]
+            end_snip = snip_4.find("_")
+            spell_id_type = int(snip_4[:end_snip])
+            result = {
+                "type": type,
+                "element_id": [dimension, parameter, spell_id_type, spell_id]
+                }
+            return result
+        else:
+            return None
+            
+    elif type_slug == "parameter":
+        type = "parameter"
+        if argument.find("new") > -1:
+            #Dimension
+            snip = argument[9:]
+            end_snip = snip.find("_")
+            dimension = int(snip[:end_snip])
+            #Parameter
+            snip_2 = snip[(end_snip + 1):]
+            end_snip = snip_2.find("_")
+            parameter = int(snip_2[:end_snip])
+            result = {
+                "type": type,
+                "element_id": [dimension, parameter]
+                }
+            return result
+        else:
+            return None
+            
+    elif type_slug == "dimension":
+        type = "dimension"
+        if argument.find("new") > -1:
+            #Dimension
+            snip = argument[9:]
+            end_snip = snip.find("_")
+            dimension = int(snip[:end_snip])
+            result = {
+                "type": type,
+                "element_id": dimension
+                }
+            return result
+        else:
+            return None
+        
+    elif type_slug == "trinkets":
+        result = {"type": "trinkets"}
+        return result
+        
+    elif type_slug == "request_n":
+        result = {"type": "name"}
+        return result
+        
+    elif type_slug == "specializ":
+        result = {"type": "specialization"}
+        return result
+        
+    elif type_slug == "character":
+        result = {"type": "character_class"}
+        return result
+        
+    else:
+        logging.error("Argument %s not recognized to parse." % argument)
+        return None
         
 app = webapp2.WSGIApplication([
     ('/', MainPage),

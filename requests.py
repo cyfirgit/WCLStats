@@ -20,12 +20,12 @@ class PullTimeoutError(Exception):
 	
 	
 def rankings_pull_filtered(encounterID, parameters, dimensions_keys, trinkets_dimension_key):
-	#This is the function that should be the core of any request pull.  It uses
-	#the other functions below to actually structure, scale, and implement the
-	#pull.
-	
+    #This is the function that should be the core of any request pull.  It uses
+    #the other functions below to actually structure, scale, and implement the
+    #pull.
+    
     dimensions = {}
-	result = []
+    result = []
     
     #Pull NDB objects from stored keys and store them in a dictionary.
     ''' Dictionary goes out as:
@@ -43,10 +43,10 @@ def rankings_pull_filtered(encounterID, parameters, dimensions_keys, trinkets_di
         dimensions[dimension.name] = {}
         parameters = ndb.get_multi(dimension.parameters)
         for parameter in parameters:
-        dimensions[dimension.name][parameter.name] = {
-            "include": parameter.include,
-            "exclude": parameter.exclude
-            }
+            dimensions[dimension.name][parameter.name] = {
+                "include": parameter.include,
+                "exclude": parameter.exclude
+                }
     #Add a dimension for trinkets if the request analyzes trinkets.
     if trinkets_dimension_key != None:
         trinkets_keys = Dimension.get_by_id(trinkets_dimension_key.id()).parameters
@@ -54,26 +54,26 @@ def rankings_pull_filtered(encounterID, parameters, dimensions_keys, trinkets_di
         dimensions["Trinkets"] = build_trinket_dimensions(trinkets)
     
     #Build a list of filters to pull against from WCL, then send the pulls.
-	filters = build_filters(dimensions)
-	for filter in filters:
-		get_filter = []
-		pull_parameters = parameters
-		pull_parameters["filter"] = filter["filter"]
-
-		logging.info("Pulling ranks for %s" % filter["name"])
-		
-		try:
-			get_filter = rankings_pull_all_pages(encounterID, pull_parameters)
-		except PullTimeoutError as e:
-			logging.error(e.msg)
-			return None
-		
-		for item in get_filter:
-			for dimension in filter["dimensions"]:
-				item[dimension] = filter["dimensions"][dimension]
-		result += get_filter
-	
-	return result
+    filters = build_filters(dimensions)
+    for filter in filters:
+        get_filter = []
+        pull_parameters = parameters
+        pull_parameters["filter"] = filter["filter"]
+        
+        logging.info("Pulling ranks for %s" % filter["name"])
+        
+        try:
+            get_filter = rankings_pull_all_pages(encounterID, pull_parameters)
+        except PullTimeoutError as e:
+            logging.error(e.msg)
+            return None
+        
+        for item in get_filter:
+            for dimension in filter["dimensions"]:
+                item[dimension] = filter["dimensions"][dimension]
+        result += get_filter
+    
+    return result
 	
 	
 def build_filters(dimensions):

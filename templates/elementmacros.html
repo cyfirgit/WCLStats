@@ -116,7 +116,7 @@
 			<div class="checkbox" id="specializations">
 				{% for specialization in classes[index]['specs'] %}
 					<label class="checkbox">
-						<input type="checkbox" value="{{ specialization['id'] }}" name="{{ specialization['id'] }}"
+						<input type="checkbox" value="{{ specialization['id'] }}" name="specialization_{{ specialization['id'] }}"
 						{% if specializations != none %}
 							{% if specialization['id'] in specializations %}
 								checked
@@ -137,7 +137,7 @@
 		<div class="row">
 			<div class="col-sm-5">
 				<div class="input-group">
-					<input type="text" class="form-control" value="Trinkets" value="Trinkets" disabled>
+					<input type="text" class="form-control" value="Trinkets" name="trinkets" disabled>
 					<span class="input-group-btn">
 						<button class="btn btn-danger" type="button" id="removeTrinkets">
 							<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
