@@ -56,9 +56,9 @@ class Account(ndb.Model):
 class Pull(ndb.Model):
     request = ndb.KeyProperty(kind='Request')
     date = ndb.DateTimeProperty(auto_now_add=True)
-    bosses = ndb.IntegerProperty(repeated=True)
-    difficulties = ndb.IntegerProperty(repeated=True)
-    metrics = ndb.StringProperty(repeated=True)
+    encounter = ndb.IntegerProperty()
+    difficulty = ndb.IntegerProperty()
+    metric = ndb.StringProperty()
     results = ndb.BlobKeyProperty()
     
     
