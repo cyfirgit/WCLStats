@@ -83,7 +83,7 @@
 					{% for spell_id in parameter['include'] %}
 						{% set element_id_spell_id = start_id_spell_id + loop.index0 %}
 							<script>setID('spell_id', {{ element_id_dimension }}, {{ element_id_parameter }}, {{ element_id_spell_id }})</script>
-							{{ spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, spell_id, 'minus') }}
+							{{ spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, element_id_spell_type, spell_id, 'minus') }}
 					{% endfor %}
 					{{ spell_id_template(element_id_dimension, element_id_parameter, 'include_id', 'new', none, 'plus') }}
 				</div>
@@ -96,7 +96,7 @@
 					{% for spell_id in parameter['exclude'] %}
 						{% set element_id_spell_id = start_id_spell_id + loop.index0 %}
 							<script>setID('spell_id', {{ element_id_dimension }}, {{ element_id_parameter }}, {{ element_id_spell_id }})</script>
-							{{ spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, spell_id, 'minus') }}
+							{{ spell_id_template(element_id_dimension, element_id_parameter, element_id_spell_id, element_id_spell_type, spell_id, 'minus') }}
 					{% endfor %}
 					{{ spell_id_template(element_id_dimension, element_id_parameter, 'exclude_id', 'new', none, 'plus') }}
 				</div>
@@ -137,7 +137,7 @@
 		<div class="row">
 			<div class="col-sm-5">
 				<div class="input-group">
-					<input type="text" class="form-control" value="Trinkets" name="trinkets" disabled>
+					<input type="text" class="form-control" value="Trinkets" name="trinkets" readonly>
 					<span class="input-group-btn">
 						<button class="btn btn-danger" type="button" id="removeTrinkets">
 							<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
@@ -152,7 +152,7 @@
 				<div class="row bottom-buffer">
 					<h4>Trinkets</h4>
 					<label class="checkbox-inline">
-						<input type="checkbox" id="includeOtherTrinkets" name="includeOtherTrinkets"
+						<input type="checkbox" id="includeOtherTrinkets" name="include_other_trinkets"
 							{% if other_trinkets == True %}
 								checked
 							{% endif %}>

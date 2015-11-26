@@ -118,11 +118,11 @@ class BuildRequestForm(webapp2.RequestHandler):
         specializations = []
         dimensions = {}
         parameters = []
-        includes = []
-        excludes = []
+        spells = []
+        batch = []
         
         #Construct the Request object:
-        new_request = ndb.Request()
+        new_request = Request()
         new_request.specialization = []
         new_request.dimensions = []
         for argument in arguments:
@@ -135,40 +135,50 @@ class BuildRequestForm(webapp2.RequestHandler):
                 elif element["type"] == "specialization":
                     new_request.specialization.append(int(self.request.get(argument)))
                 elif element["type"] == "trinkets":
-                    dimensions[0] = {"name": "Trinkets", "parameters": {}}
+                    new_dimension = Dimension(name='Trinkets')
+                    switch = self.request.get('include_other_trinkets')
+                    if switch == 'on':
+                        new_dimension.other_trinkets = True
+                    dimensions[0] = {'obj': new_dimension}
                 elif element["type"] == "dimension":
-                    dimensions[element["element_id"]] = {
-                        "name": self.request.get(argument),
-                        "parameters": {}
-                        }
+                    new_dimension = Dimension(name=self.request.get(argument))
+                    dimensions[int(element["id"])] = {'obj': new_dimension}
                 elif element["type"] == "parameter":
-                    new_parameter = {
-                        "name": self.request.get(argument),
-                        "include": []
-                        "exclude": []
-                        "element_id": element["element_id"]
-                        }
-                    parameters.append(new_parameter)
+                    new_parameter = Parameter(name=self.request.get(argument))
+                    parameters.append({
+                        'dimension': int(element["id"][0]),
+                        'parameter': int(element["id"][1]),
+                        'obj': new_parameter
+                        })
                 elif element["type"] == "spell_id":
-                    new_spell_id = {
-                        "spell_id": int(self.request.get(argument)),
-                        "element_id": element["element_id"]
-                        }
-                    if element["element_id"][2] == "include":
-                        includes.append(new_spell_id)
-                    elif element["element_id"][2] == "exclude":
-                        excludes.append(new_spell_id)
-                    else:
-                        logging.error("Could not handle spell id %s" % argument)
-                
-                #Next up: Sort through |parameters| and then |includes| & 
-                #|excludes| and apply them to the appropriate dimension.
-                #Then dump everything into |new_request| and put_multi all the
-                #new NDB objects.
-                
+                    element["value"] = self.request.get(argument)
+                    spells.append(element)
+        for param in parameters:
+            dimensions[param['dimension']][param['parameter']]=param['obj']
+        for spell in spells:
+            if spell['id'][2] == 1:
+                dimensions[spell['id'][0]][spell['id'][1]].include.append(int(spell['value']))
+            elif spell['id'][2] == 2:
+                dimensions[spell['id'][0]][spell['id'][1]].exclude.append(int(spell['value']))
+            else:
+                logging.error("Spell id %s has unrecognized type." % element)
+        for dim in dimensions:
+            dimension = dimensions[dim]
+            for value in dimension:
+                if value != 'obj':
+                    param = dimension[value]
+                    param_key = param.put()
+                    dimension['obj'].parameters.append(param_key)
+                batch.append(dimension['obj'])
+            dimension_key = dimension['obj'].put()
+            if dim == 0:
+                new_request.trinket_dimension = dimension_key
+            else:
+                new_request.dimensions.append(dimension_key)
+        batch.append(new_request)
+        result = ndb.put_multi(batch)
             
-        
-        self.response.write('Hi')
+        self.response.write(result)
     
     
 class SelectRequestForm(webapp2.RequestHandler):
@@ -194,23 +204,27 @@ class SelectRequestForm(webapp2.RequestHandler):
                     "name": dimension.name,
                     "parameters": parameters
                     })
-            trinkets_keys = Dimension.get_by_id(request_complete.trinket_dimension.id())
-            other_trinkets = trinkets_keys.other_trinkets
-            trinkets_objects = ndb.get_multi(trinkets_keys.parameters)
-            trinkets = []
-            for trinket in trinkets_objects:
-                new_trinket = {
-                    'name': trinket.name,
-                    'include': trinket.include,
-                    'exclude': trinket.exclude
-                    }
-                trinkets.append(new_trinket)
+            if request_complete.trinket_dimension != None:
+                trinkets_keys = Dimension.get_by_id(request_complete.trinket_dimension.id())
+                other_trinkets = trinkets_keys.other_trinkets
+                trinkets_objects = ndb.get_multi(trinkets_keys.parameters)
+                trinkets = []
+                for trinket in trinkets_objects:
+                    new_trinket = {
+                        'name': trinket.name,
+                        'include': trinket.include,
+                        'exclude': trinket.exclude
+                        }
+                    trinkets.append(new_trinket)
+            else:
+                trinkets = []
+                other_trinkets = None
                 
             #Flag the class in the request as selected
+            class_index = None
             for class_ in classes:
                 if class_['id'] == request_complete.character_class:
                     class_index = classes.index(class_)
-                    
             request_data = {
                 'selected_request': selected_request,
                 'character_class': request_complete.character_class,
@@ -358,14 +372,14 @@ def parse_argument(argument):
         Returns a dict as follows:
         {
             "type": element type,
-            "element_id": [dimension, parameter, spell_id_type, spell_id]**
+            "id": [dimension, parameter, spell_id_type, spell_id]**
             }
         ** Only exists for dimensions, parameters, and spell ids
         '''
     type_slug = argument[:9]
     if type_slug == "spell_id_":
         type = "spell_id"
-        if argument.find("new") > -1:
+        if argument.find("new") == -1:
             #Dimension
             snip = argument[9:]
             end_snip = snip.find("_")
@@ -378,13 +392,9 @@ def parse_argument(argument):
             snip_3 = snip_2[(end_snip + 1):]
             end_snip = snip_3.find("_")
             spell_id_type = int(snip_3[:end_snip])
-            #Spell ID
-            snip_4 = snip_3[(end_snip + 1):]
-            end_snip = snip_4.find("_")
-            spell_id_type = int(snip_4[:end_snip])
             result = {
                 "type": type,
-                "element_id": [dimension, parameter, spell_id_type, spell_id]
+                "id": [dimension, parameter, spell_id_type]
                 }
             return result
         else:
@@ -392,18 +402,16 @@ def parse_argument(argument):
             
     elif type_slug == "parameter":
         type = "parameter"
-        if argument.find("new") > -1:
+        if argument.find("new") == -1:
             #Dimension
-            snip = argument[9:]
+            snip = argument[10:]
             end_snip = snip.find("_")
             dimension = int(snip[:end_snip])
             #Parameter
-            snip_2 = snip[(end_snip + 1):]
-            end_snip = snip_2.find("_")
-            parameter = int(snip_2[:end_snip])
+            parameter = snip[(end_snip + 1):]
             result = {
                 "type": type,
-                "element_id": [dimension, parameter]
+                "id": [dimension, parameter]
                 }
             return result
         else:
@@ -411,14 +419,12 @@ def parse_argument(argument):
             
     elif type_slug == "dimension":
         type = "dimension"
-        if argument.find("new") > -1:
+        if argument.find("new") == -1:
             #Dimension
-            snip = argument[9:]
-            end_snip = snip.find("_")
-            dimension = int(snip[:end_snip])
+            dimension = int(argument[10:])
             result = {
                 "type": type,
-                "element_id": dimension
+                "id": dimension
                 }
             return result
         else:
@@ -439,7 +445,7 @@ def parse_argument(argument):
     elif type_slug == "character":
         result = {"type": "character_class"}
         return result
-        
+    
     else:
         logging.error("Argument %s not recognized to parse." % argument)
         return None

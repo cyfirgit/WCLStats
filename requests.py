@@ -19,7 +19,7 @@ class PullTimeoutError(Exception):
 		self.msg = msg
 	
 	
-def rankings_pull_filtered(encounterID, parameters, dimensions_keys, trinkets_dimension_key):
+def rankings_pull_filtered(encounterID, parameters, request):
     #This is the function that should be the core of any request pull.  It uses
     #the other functions below to actually structure, scale, and implement the
     #pull.
@@ -38,7 +38,7 @@ def rankings_pull_filtered(encounterID, parameters, dimensions_keys, trinkets_di
                 }
             }
         '''
-    dimensions_objects = ndb.get_multi(dimensions_keys)
+    dimensions_objects = ndb.get_multi(request.dimensions)
     for dimension in dimensions_objects:
         dimensions[dimension.name] = {}
         parameters = ndb.get_multi(dimension.parameters)
@@ -48,9 +48,8 @@ def rankings_pull_filtered(encounterID, parameters, dimensions_keys, trinkets_di
                 "exclude": parameter.exclude
                 }
     #Add a dimension for trinkets if the request analyzes trinkets.
-    if trinkets_dimension_key != None:
-        trinkets_keys = Dimension.get_by_id(trinkets_dimension_key.id()).parameters
-        trinkets = ndb.get_multi(trinkets_keys)
+    if request.trinket_dimension != None:
+        trinkets = Dimension.get_by_id(request.trinket_dimension.id())
         dimensions["Trinkets"] = build_trinket_dimensions(trinkets)
     
     #Build a list of filters to pull against from WCL, then send the pulls.
@@ -149,22 +148,10 @@ def build_filters(dimensions):
 	return result
 		
 	
-def build_trinket_dimensions(trinkets):
-	#Take a set of trinket options and generate a dimensions dictionary that can
-	#be appended to the other dimensions.  This function will always return a 
-	#list of dimensions that only factors in the selected trinkets; the user
-	#must specifically include "Other Trinkets" as a trinket choice to see e.g.
-	#ranks where only one of the selected trinkets is in use.
-        ''' Trinkets come in as:
-            [
-                {
-                    "name": "",
-                    "include": [1, 2, ... n],
-                    "exclude": [1, 2, ... n]
-                    }
-                ]
-            
-            Dictionary goes out as:
+def build_trinket_dimensions(trinkets_object):
+	#Take a set of trinket options and generate a dimensions dictionary to be
+	#appended to the other dimensions.
+        ''' Dictionary goes out as:
             {
                 "Trinket1|Trinket2": {
                     "include": [1, 2, ... n],
@@ -175,25 +162,19 @@ def build_trinket_dimensions(trinkets):
 	slot = [0,1]
 	result = {}
 	trinkets_exclude_all = []
-	both_other_trinkets_flag = False
-	kill_index = None
 	
 	#We need to create a list of all trinket effects we're considering.  During
 	#the loop, we'll remove the other trinket's effect from this list for each
-	#trinket considered.  During this loop we'll also flag to construct a
-	#dimension for "Both Other Trinkets"
+	#trinket considered.
+    trinkets = ndb.get_multi(trinkets_object.parameters)
 	for trinket in trinkets:
 		if trinket.include != None:
 			trinkets_exclude_all += trinket.include
-		if trinket.name == "Both Other Trinkets":
-			both_other_trinkets_flag = True
-			kill_index = trinkets.index(trinket)
-	if kill_index != None:
-		trinkets.pop(kill_index)
-	if both_other_trinkets_flag == True:
+	if trinkets_object.other_trinkets == True:
 		result["Both Other Trinkets"] = {}
 		result["Both Other Trinkets"]["include"] = None
 		result["Both Other Trinkets"]["exclude"] = trinkets_exclude_all
+        trinkets.append(wclstats.Parameter(name="Other Trinkets"))
 
 	#We use a theorem one stars and bars formula to determine the number of
 	#possible combinations of trinkets.  Because k is always 2 (number of 
