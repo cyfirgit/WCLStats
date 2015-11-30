@@ -11,7 +11,7 @@ import os
 import logging
 import math
 
-import wclstats
+import main
 
 from google.appengine.ext import ndb
 from google.appengine.api import urlfetch
@@ -29,7 +29,7 @@ def rankings_pull_filtered(pull):
     
     dimensions = {}
     result = []
-    request = wclstats.Request.get_by_id(pull.request.id())
+    request = main.Request.get_by_id(pull.request.id())
     encounter_id = pull.encounter,
     pull_parameters = {
         "metric": pull.metric,
@@ -62,7 +62,7 @@ def rankings_pull_filtered(pull):
                     }
         #Add a dimension for trinkets if the request analyzes trinkets.
         if request.trinket_dimension != None:
-            trinkets = wclstats.Dimension.get_by_id(request.trinket_dimension.id())
+            trinkets = main.Dimension.get_by_id(request.trinket_dimension.id())
             dimensions["Trinkets"] = build_trinket_dimensions(trinkets)
         
         #Build a list of filters to pull against from WCL, then send the pulls.
@@ -185,7 +185,7 @@ def build_trinket_dimensions(trinkets_object):
         result["Both Other Trinkets"] = {}
         result["Both Other Trinkets"]["include"] = None
         result["Both Other Trinkets"]["exclude"] = trinkets_exclude_all
-        trinkets.append(wclstats.Parameter(name="Other Trinkets"))
+        trinkets.append(main.Parameter(name="Other Trinkets"))
     
     #We use a theorem one stars and bars formula to determine the number of
     #possible combinations of trinkets.  Because k is always 2 (number of 

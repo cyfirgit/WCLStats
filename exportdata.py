@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import wclstats
+import main
 
 from google.appengine.ext import ndb
 
@@ -11,7 +11,7 @@ def csv_output(ranks, request):
                   "duration", "size", "link", "guild", "server"]
     dimensions = ndb.get_multi(request.dimensions)
     if request.trinket_dimension != None:
-        dimensions.insert(0, wclstats.Dimension.get_by_id(request.trinket_dimension.id()))
+        dimensions.insert(0, main.Dimension.get_by_id(request.trinket_dimension.id()))
     for dimension in dimensions:
         fieldnames.append(dimension.name)
     

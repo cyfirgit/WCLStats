@@ -299,7 +299,18 @@ class DownloadPage(webapp2.RequestHandler):
         output = exportdata.csv_output(pull, frost_dimensions)
         self.response.headers["Content-Type"] = "application/csv"
         self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % "output.csv"
-        self.response.write(output)    
+        self.response.write(output)
+        
+class MyRequestsPage(webapp2.RequestHandler):
+    def get(self):
+        template = JINJA_ENVIRONMENT.get_template("templates/myrequests.html")
+        requests = Request.query().fetch()
+        wcl_classes = Reference.get_by_id('wcl_classes')
+        template_values = {
+                'requests': requests,
+                'wcl_classes': wcl_classes.json,
+            }
+        self.response.write(template.render(template_values))
     
         
 def initialize():
@@ -457,5 +468,6 @@ app = webapp2.WSGIApplication([
     ('/selectrequestform', SelectRequestForm),
     ('/newelement', NewElementForm),
     ('/about', AboutPage),
-    ('/output', DownloadPage)
+    ('/output', DownloadPage),
+    ('/myrequests', MyRequestsPage),
 ], debug=True)

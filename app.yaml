@@ -12,7 +12,7 @@ handlers:
   static_dir: resources
 
 - url: /.*
-  script: wclstats.app
+  script: main.app
 
 libraries:
 - name: webapp2
