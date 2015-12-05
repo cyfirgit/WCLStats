@@ -20,9 +20,8 @@ import webapp2
 import logging
 import json
 
-import pprint
-
 from google.appengine.ext import ndb
+from google.appengine.api import users
 
 import requests
 import exportdata
@@ -34,7 +33,8 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     extensions=['jinja2.ext.autoescape'],
     autoescape=True)
     
-    
+
+#***NDB Model classes***    
 class Difficulty(ndb.Model):
     name = ndb.StringProperty()
     
@@ -48,9 +48,10 @@ class Reference(ndb.Model):
     
     
 class Account(ndb.Model):
-    name = ndb.StringProperty()
-    email = ndb.StringProperty()
-    blizzard_id = ndb.StringProperty()
+    user_id = ndb.StringProperty()
+    nickname = ndb.StringProperty()
+    level = ndb.StringProperty()
+    access_requested = ndb.BooleanProperty()
 
 
 class Pull(ndb.Model):
@@ -70,6 +71,7 @@ class Parameter(ndb.Model):
     @classmethod
     def query_parameter(cls, ancestor_key):
         return cls.query(ancestor=ancestor_key).order(cls.name)
+    
     
 class Dimension(ndb.Model):
     name = ndb.StringProperty()
@@ -92,28 +94,90 @@ class Request(ndb.Model):
     @classmethod
     def query_request(cls, ancestor_key):
         return cls.query(ancestor=ancestor_key).order(cls.name)
-    
+
 	
+#***Page classes***
 class MainPage(webapp2.RequestHandler):
     def get(self):
+        account = login_check(self, None)
+        
+        template_values = {
+            'account': account,
+            }
         template = JINJA_ENVIRONMENT.get_template("templates/wclstats.html")
-        self.response.write(template.render({}))
+        self.response.write(template.render(template_values))
 		
 		
 class RequestBuilderPage(webapp2.RequestHandler):
     def get(self):
+        account = login_check(self, 1)
+        
         requests = Request.query().fetch()
+        
         template_values = {
+            'account': account,
             'requests': requests,
         }
-        
         template = JINJA_ENVIRONMENT.get_template("templates/requestbuilder.html")
         self.response.write(template.render(template_values))
         
+ 
+class AboutPage(webapp2.RequestHandler):
+    def get(self):
+        account = login_check(self, None)
         
+        template_values = {
+            'account': account,
+            'requests': requests,
+        }
+        template = JINJA_ENVIRONMENT.get_template("templates/about.html")
+        self.response.write(template.render(template_values))
+
+		
+class MyRequestsPage(webapp2.RequestHandler):
+    def get(self):
+        account = login_check(self, 1)
+        
+        requests = Request.query().fetch()
+        wcl_classes = Reference.get_by_id('wcl_classes')
+        
+        template_values = {
+            'account': account,
+            'requests': requests,
+            'wcl_classes': wcl_classes.json,
+            }
+        template = JINJA_ENVIRONMENT.get_template("templates/myrequests.html")
+        self.response.write(template.render(template_values))
+        
+        
+class AccountSettingsPage(webapp2.RequestHandler):
+    def get(self):
+        account = login_check(self, 1)
+        
+        template_values = {
+            'account': account,
+            'page': 'account_settings',
+            
+            }
+        template = JINJA_ENVIRONMENT.get_template("templates/myrequests.html")
+        self.response.write(template.render(template_values))
+        
+    
+class RequestAccessPage(webapp2.RequestHandler):
+    def get(self, level):
+        account = login_check(self, None)
+        levels = Reference.get_by_id('levels')
+        template_values = {
+            'account': account,
+            'required_level'#STOPHERE
+            }
+
+
+#***POST classes*** 
 class BuildRequestForm(webapp2.RequestHandler):
     #Process a user-defined request and store in NDB.
     def post(self):
+        account = login_check(self, 1)
         arguments = self.request.arguments()
         specializations = []
         dimensions = {}
@@ -183,6 +247,7 @@ class BuildRequestForm(webapp2.RequestHandler):
     
 class SelectRequestForm(webapp2.RequestHandler):
     def post(self):
+        account = login_check(self, 1)
         request_type = self.request.get('request_type')
         selected_request = self.request.get('request')
         classes = Reference.get_by_id("wcl_classes").json
@@ -252,6 +317,7 @@ class SelectRequestForm(webapp2.RequestHandler):
         
 class NewElementForm(webapp2.RequestHandler):
     def post(self):
+        account = login_check(self, 1)
         id_array = self.request.get('id_array')
         type = self.request.get('type')
         input_value = self.request.get('input_value')
@@ -285,14 +351,9 @@ class NewElementForm(webapp2.RequestHandler):
         self.response.write(new_element_json)
         
 		
-class AboutPage(webapp2.RequestHandler):
-    def get(self):
-        template = JINJA_ENVIRONMENT.get_template("templates/about.html")
-        self.response.write(template.render({}))
-
-		
 class DownloadPage(webapp2.RequestHandler):
     def post(self):
+        account = login_check(self, 1)
         logging.info("***Beginning Frost Pull***")
         pull = requests.rankings_pull_filtered(boss, frost_parameters, frost_dimensions)
         logging.info("***Compiling frost.csv data***")
@@ -300,19 +361,8 @@ class DownloadPage(webapp2.RequestHandler):
         self.response.headers["Content-Type"] = "application/csv"
         self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % "output.csv"
         self.response.write(output)
-        
-class MyRequestsPage(webapp2.RequestHandler):
-    def get(self):
-        template = JINJA_ENVIRONMENT.get_template("templates/myrequests.html")
-        requests = Request.query().fetch()
-        wcl_classes = Reference.get_by_id('wcl_classes')
-        template_values = {
-                'requests': requests,
-                'wcl_classes': wcl_classes.json,
-            }
-        self.response.write(template.render(template_values))
     
-        
+    
 def initialize():
     #Used at service startup to populate NDB with class and zone data.
     class_data = requests.static_request("WCL", "classes")
@@ -461,6 +511,38 @@ def parse_argument(argument):
         logging.error("Argument %s not recognized to parse." % argument)
         return None
         
+def login_check(handler, level):
+    #Each page should flag if it requires a login/account level through this 
+    #function.  If it does, require the user to log in and redirect. Otherwise,
+    #pass user data to the page if logged in, or None if not logged in. POST 
+    #pages are flagged to require login from app.yaml. - or not, working it.
+    user = users.get_current_user()
+    if not user:
+        if level is not None:
+            #No user logged in; page requires login permissions.
+            handler.redirect(users.create_login_url(handler.request.uri))
+        elif level is None:
+            #No user logged in; page requires no permission.
+            return None
+    else:
+        account = Account.query(Account.user_id == user.user_id()).get()
+        if query is not None:
+            if level is None:
+                #User is logged in; page requires no permissions.
+                return account[0]
+            else:
+                #User is logged in; page requires permissions...
+                if account[0].level >= level:
+                    #... and user meets the permission requirement.
+                    return account[0]
+                else:
+                    #... and user does not meet the permission requirement.
+                    handler.redirect('/requestaccess/%d' % level)
+        else:
+            #Fires right after logging in for the first time, requiring user to
+            #complete site account info.
+            handler.redirect('/account')
+        
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/requestbuilder', RequestBuilderPage),
@@ -470,4 +552,6 @@ app = webapp2.WSGIApplication([
     ('/about', AboutPage),
     ('/output', DownloadPage),
     ('/myrequests', MyRequestsPage),
+    ('/account', AccountSettingsPage),
+    ('/requestaccess/(\d)', RequestAccessPage),
 ], debug=True)
