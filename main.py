@@ -50,8 +50,8 @@ class Reference(ndb.Model):
 class Account(ndb.Model):
     user_id = ndb.StringProperty()
     nickname = ndb.StringProperty()
-    level = ndb.StringProperty()
-    access_requested = ndb.BooleanProperty()
+    level = ndb.IntegerProperty()
+    email = ndb.StringProperty()
 
 
 class Pull(ndb.Model):
@@ -100,6 +100,16 @@ class Request(ndb.Model):
 class MainPage(webapp2.RequestHandler):
     def get(self):
         account = login_check(self, None)
+        if account['url'] == 'main':
+            self.redirect('/', permanent=True)
+        elif account['url'] == 'account':
+            self.redirect('/account', permanent=True)
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/', permanent=True)
         
         template_values = {
             'account': account,
@@ -110,7 +120,17 @@ class MainPage(webapp2.RequestHandler):
 		
 class RequestBuilderPage(webapp2.RequestHandler):
     def get(self):
-        account = login_check(self, 1)
+        account = login_check(self, 2)
+        if account['url'] == 'main':
+            self.redirect('/')
+        elif account['url'] == 'account':
+            self.redirect('/account')
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/')
         
         requests = Request.query().fetch()
         
@@ -118,13 +138,24 @@ class RequestBuilderPage(webapp2.RequestHandler):
             'account': account,
             'requests': requests,
         }
-        template = JINJA_ENVIRONMENT.get_template("templates/requestbuilder.html")
+        template = JINJA_ENVIRONMENT.get_template(
+            "templates/requestbuilder.html")
         self.response.write(template.render(template_values))
         
  
 class AboutPage(webapp2.RequestHandler):
     def get(self):
         account = login_check(self, None)
+        if account['url'] == 'main':
+            self.redirect('/')
+        elif account['url'] == 'account':
+            self.redirect('/account')
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/')
         
         template_values = {
             'account': account,
@@ -136,7 +167,17 @@ class AboutPage(webapp2.RequestHandler):
 		
 class MyRequestsPage(webapp2.RequestHandler):
     def get(self):
-        account = login_check(self, 1)
+        account = login_check(self, 2)
+        if account['url'] == 'main':
+            self.redirect('/')
+        elif account['url'] == 'account':
+            self.redirect('/account')
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/')
         
         requests = Request.query().fetch()
         wcl_classes = Reference.get_by_id('wcl_classes')
@@ -152,32 +193,42 @@ class MyRequestsPage(webapp2.RequestHandler):
         
 class AccountSettingsPage(webapp2.RequestHandler):
     def get(self):
-        account = login_check(self, 1)
-        
-        template_values = {
-            'account': account,
-            'page': 'account_settings',
+        account = login_check(self, 0)
+        if account['url'] == 'main':
+            self.redirect('/', permanent=True)
+        elif account['url'] == 'account':
+            self.redirect('/account', permanent=True)
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/', permanent=True)
             
-            }
-        template = JINJA_ENVIRONMENT.get_template("templates/myrequests.html")
-        self.response.write(template.render(template_values))
-        
-    
-class RequestAccessPage(webapp2.RequestHandler):
-    def get(self, level):
-        account = login_check(self, None)
-        levels = Reference.get_by_id('levels')
         template_values = {
             'account': account,
-            'required_level'#STOPHERE
+            'levels': Reference.get_by_id('account_levels').json
             }
+        logging.info(template_values['levels'])
+        template = JINJA_ENVIRONMENT.get_template("templates/account.html")
+        self.response.write(template.render(template_values))
 
 
 #***POST classes*** 
 class BuildRequestForm(webapp2.RequestHandler):
     #Process a user-defined request and store in NDB.
     def post(self):
-        account = login_check(self, 1)
+        if account['url'] == 'main':
+            self.redirect('/')
+        elif account['url'] == 'account':
+            self.redirect('/account')
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/')
+        account = login_check(self, 2)
         arguments = self.request.arguments()
         specializations = []
         dimensions = {}
@@ -195,9 +246,11 @@ class BuildRequestForm(webapp2.RequestHandler):
                 if element["type"] == "name":
                     new_request.name = self.request.get(argument)
                 elif element["type"] == "character_class":
-                    new_request.character_class = int(self.request.get(argument))
+                    new_request.character_class = int(
+                        self.request.get(argument))
                 elif element["type"] == "specialization":
-                    new_request.specialization.append(int(self.request.get(argument)))
+                    new_request.specialization.append(int(
+                        self.request.get(argument)))
                 elif element["type"] == "trinkets":
                     new_dimension = Dimension(name='Trinkets')
                     switch = self.request.get('include_other_trinkets')
@@ -221,9 +274,11 @@ class BuildRequestForm(webapp2.RequestHandler):
             dimensions[param['dimension']][param['parameter']]=param['obj']
         for spell in spells:
             if spell['id'][2] == 1:
-                dimensions[spell['id'][0]][spell['id'][1]].include.append(int(spell['value']))
+                dimensions[spell['id'][0]][spell['id'][1]].include.append(
+                    int(spell['value']))
             elif spell['id'][2] == 2:
-                dimensions[spell['id'][0]][spell['id'][1]].exclude.append(int(spell['value']))
+                dimensions[spell['id'][0]][spell['id'][1]].exclude.append(
+                    int(spell['value']))
             else:
                 logging.error("Spell id %s has unrecognized type." % element)
         for dim in dimensions:
@@ -247,13 +302,24 @@ class BuildRequestForm(webapp2.RequestHandler):
     
 class SelectRequestForm(webapp2.RequestHandler):
     def post(self):
-        account = login_check(self, 1)
+        account = login_check(self, 2)
+        if account['url'] == 'main':
+            self.redirect('/')
+        elif account['url'] == 'account':
+            self.redirect('/account')
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/')
         request_type = self.request.get('request_type')
         selected_request = self.request.get('request')
         classes = Reference.get_by_id("wcl_classes").json
         if request_type == 'existing':
             #Query NDB for the request and its dimensions and parameters.
-            request_complete = Request.query(Request.name == selected_request).fetch()[0]
+            request_complete = Request.query(
+                Request.name == selected_request).fetch()[0]
             dimensions_qry = ndb.get_multi(request_complete.dimensions)
             dimensions = []
             for dimension in dimensions_qry:
@@ -270,7 +336,8 @@ class SelectRequestForm(webapp2.RequestHandler):
                     "parameters": parameters
                     })
             if request_complete.trinket_dimension != None:
-                trinkets_keys = Dimension.get_by_id(request_complete.trinket_dimension.id())
+                trinkets_keys = Dimension.get_by_id(
+                    request_complete.trinket_dimension.id())
                 other_trinkets = trinkets_keys.other_trinkets
                 trinkets_objects = ndb.get_multi(trinkets_keys.parameters)
                 trinkets = []
@@ -317,7 +384,17 @@ class SelectRequestForm(webapp2.RequestHandler):
         
 class NewElementForm(webapp2.RequestHandler):
     def post(self):
-        account = login_check(self, 1)
+        account = login_check(self, 2)
+        if account['url'] == 'main':
+            self.redirect('/')
+        elif account['url'] == 'account':
+            self.redirect('/account')
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/')
         id_array = self.request.get('id_array')
         type = self.request.get('type')
         input_value = self.request.get('input_value')
@@ -353,7 +430,17 @@ class NewElementForm(webapp2.RequestHandler):
 		
 class DownloadPage(webapp2.RequestHandler):
     def post(self):
-        account = login_check(self, 1)
+        account = login_check(self, 2)
+        if account['url'] == 'main':
+            self.redirect('/')
+        elif account['url'] == 'account':
+            self.redirect('/account')
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/')
         logging.info("***Beginning Frost Pull***")
         pull = requests.rankings_pull_filtered(boss, frost_parameters, frost_dimensions)
         logging.info("***Compiling frost.csv data***")
@@ -361,8 +448,69 @@ class DownloadPage(webapp2.RequestHandler):
         self.response.headers["Content-Type"] = "application/csv"
         self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % "output.csv"
         self.response.write(output)
+        
+        
+class SaveAccountForm(webapp2.RequestHandler):
+    #Update an account via admin page.
+    def post(self):
+        account = login_check(self, 4)
+        if account['url'] == 'main':
+            self.redirect('/')
+        elif account['url'] == 'account':
+            self.redirect('/account')
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/')
+        user_id = int(self.request.get('user_id'))
+        account = Account.query(user_id=user_id).fetch()[0]
+        account.username = self.request.get('username')
+        account.email = self.request.get('email')
+        account.level = int(self.request.get('level'))
+        account.put()
+        
+        template = JINJA_ENVIRONMENT.get_template("templates/newelement.html")
+        template_values = {'user': account}
+        rendered_template = template.render(template_values)
+        new_element = {
+            'template': rendered_template,
+            'element_id': 'account_row'
+            }
+        new_element_json = json.dumps(new_element)
+        self.response.write(new_element_json)
+        
+        
+class EditAccountForm(webapp2.RequestHandler):
+    #Update an account via admin page.
+    def post(self):
+        account = login_check(self, 4)
+        if account['url'] == 'main':
+            self.redirect('/')
+        elif account['url'] == 'account':
+            self.redirect('/account')
+        elif account['url'] == 'login_redirect':
+            self.redirect(users.create_login_url(self.request.uri))
+        elif account['url'] == 'login':
+            account['url'] = users.create_login_url(self.request.uri)
+        else:
+            account['url'] = users.create_logout_url('/')
+        user_id = int(self.request.get('user_id'))
+        account = Account.query(user_id=user_id).fetch()[0]
+        
+        template = JINJA_ENVIRONMENT.get_template("templates/newelement.html")
+        template_values = {'user': account}
+        rendered_template = template.render(template_values)
+        new_element = {
+            'template': rendered_template,
+            'element_id': 'account_row_edit'
+            }
+        new_element_json = json.dumps(new_element)
+        self.response.write(new_element_json)
     
     
+#***Functions***
 def initialize():
     #Used at service startup to populate NDB with class and zone data.
     class_data = requests.static_request("WCL", "classes")
@@ -398,6 +546,14 @@ def initialize():
         "krsi"
         ]
         
+    account_levels_manual = {
+        0: 'User',
+        1: 'Moderator',
+        2: 'Theorycrafter',
+        3: 'Tester',
+        4: 'Admin',
+        }
+        
     result = []
     
     wcl_classes = Reference(id="wcl_classes")
@@ -415,6 +571,10 @@ def initialize():
     difficulties = Reference(id="difficulties")
     difficulties.json = difficulties_manual
     result.append(difficulties)
+    
+    account_levels = Reference(id="account_levels")
+    account_levels.json = account_levels_manual
+    result.append(account_levels)
     
     ndb.put_multi(result)
     
@@ -514,34 +674,41 @@ def parse_argument(argument):
 def login_check(handler, level):
     #Each page should flag if it requires a login/account level through this 
     #function.  If it does, require the user to log in and redirect. Otherwise,
-    #pass user data to the page if logged in, or None if not logged in. POST 
-    #pages are flagged to require login from app.yaml. - or not, working it.
+    #pass user data to the page if logged in, or None if not logged in.
     user = users.get_current_user()
     if not user:
         if level is not None:
             #No user logged in; page requires login permissions.
-            handler.redirect(users.create_login_url(handler.request.uri))
+            return {'url': 'login_redirect'}
         elif level is None:
             #No user logged in; page requires no permission.
-            return None
+            return {'user': {'level': None}, 
+                    'url': 'login'}
     else:
         account = Account.query(Account.user_id == user.user_id()).get()
-        if query is not None:
+        if account is not None:
             if level is None:
                 #User is logged in; page requires no permissions.
-                return account[0]
+                return {'user': account, 
+                        'url': 'login'}
             else:
                 #User is logged in; page requires permissions...
-                if account[0].level >= level:
+                if account.level >= level:
                     #... and user meets the permission requirement.
-                    return account[0]
+                    return {'user': account, 
+                            'url': 'login'}
                 else:
                     #... and user does not meet the permission requirement.
-                    handler.redirect('/requestaccess/%d' % level)
+                    return {'user': account,
+                            'url': 'main'}
         else:
             #Fires right after logging in for the first time, requiring user to
             #complete site account info.
-            handler.redirect('/account')
+            new_account = Account(user_id=user.user_id())
+            new_account.email = user.email()
+            new_account.level = 0;
+            new_account.put()
+            return {'url': 'account'}
         
 app = webapp2.WSGIApplication([
     ('/', MainPage),
@@ -553,5 +720,7 @@ app = webapp2.WSGIApplication([
     ('/output', DownloadPage),
     ('/myrequests', MyRequestsPage),
     ('/account', AccountSettingsPage),
-    ('/requestaccess/(\d)', RequestAccessPage),
+    ('/saveaccount', SaveAccountForm),
+    ('/editaccount', EditAccountForm),
+    # ('/updateaccount', UpdateAccountForm),
 ], debug=True)

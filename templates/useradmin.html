@@ -1,0 +1,24 @@
+{% extends 'templates/wclstats.html' %}
+
+{% block header %}
+	<script src="resources/useradmin.js"></script>
+{% endblock %}
+
+{% block content %}
+	<table class="table">
+		<thead>
+			<tr>
+				<th></th>
+				<th>Username</th>
+				<th>Email</th>
+				<th>Level</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for user in users %}
+				{{ elements.account_row(user) }}
+			{% endfor %}
+		</tbody>
+	</table>
+{% endblock %}
+					

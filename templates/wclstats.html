@@ -36,27 +36,27 @@
 		<div id="navbar" class="navbar-collapse collapse">
 		  <ul class="nav navbar-nav">
 			<li><a href="/about">About</a></li>
-			{% if account != none %}
+			{% if account.user.level >= 2 %}
 				<li><a href="/requestbuilder">Request Builder</a></li>
 			{% endif %}
 		  </ul>
 		  <ul class="nav navbar-nav navbar-right">
-			{% if account != none %}
+			{% if account.user.level != none %}
 				<li class="dropdown">
 				  <a href="#" class="dropdown-toggle" data-toggle="dropdown" 
 					role="button" aria-haspopup="true" aria-expanded="false">
-					{{ account.nickname }} <span class="caret"></span>
+					{{ account.user.nickname }} <span class="caret"></span>
 				  </a>
 				  <ul class="dropdown-menu">
 					<li><a href="/myrequests">My Requests</a></li>
 					<li><a href="/mypulls">My Pulls</a></li>
 					<li role="separator" class="divider"></li>
 					<li><a href="/account">Account Settings</a></li>
-					<li><a href="/signout">Sign Out</a></li>
+					<li><a href="{{ account.url }}">Sign Out</a></li>
 				  </ul>
 				</li>
 			{% else %}
-				<li><a href="/signin">Sign In</a></li>
+				<li><a href="{{ account.url }}">Sign In</a></li>
 			{% endif %}
 		  </ul>
 		</div>
