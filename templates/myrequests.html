@@ -2,21 +2,26 @@
 {% import '/templates/elementmacros.html' as elements %}
 
 {% block header %}
+	<script src="/resources/myrequests.js"></script>
 {% endblock %}
 
 {% block content %}
 	<div class="container">
 		<h1>My Requests</h1>
-		<table class="table">
-			<tr>
-				<th></th>
-				<th>Name</th>
-				<th>Class</th>
-				<th>Specs</th>
-			</tr>
-			{% for request in requests %}
-				{{ elements.request_row_template(request, wcl_classes) }}
-			{% endfor %}
-		</table>
+		{% if requests|length != 0 %}
+			<table class="table">
+				<tr>
+					<th></th>
+					<th>Name</th>
+					<th>Class</th>
+					<th>Specs</th>
+				</tr>
+				{% for request in requests %}
+					{{ elements.request_row_template(request, wcl_classes) }}
+				{% endfor %}
+			</table>
+		{% else %}
+			<h5>You don't have any requests yet!  Use the Request Builder to make one.</h5>
+		{% endif %}
 	</div>
 {% endblock %}

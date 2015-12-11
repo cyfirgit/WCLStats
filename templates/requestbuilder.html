@@ -18,7 +18,7 @@
 							</button>
 							<ul class="dropdown-menu" id="selectRequest">
 								{% for request in requests %}
-									<li><a id="{{ request.name }}">
+									<li><a id="{{ request.key.id() }}" data-requestname="{{ request.name }}">
 										{{ request.name }}
 									</a></li>
 								{% endfor %}

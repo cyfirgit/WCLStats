@@ -19,7 +19,7 @@ function setID(idType, dimension, parameter, spell_id) {
 //when a request is selected from the dropdown, loads it into the request builder
 function selectRequest() {
 	var selectedRequest = this.id;
-	$( '#requestName' ).val(selectedRequest);
+	$( '#requestName' ).val(this.dataset.requestname);
 	
 	var data = {
 		request: selectedRequest,

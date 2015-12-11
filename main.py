@@ -123,7 +123,6 @@ class Request(ndb.Model):
     specialization = ndb.IntegerProperty(repeated=True)
     dimensions = ndb.KeyProperty(kind='Dimension', repeated=True)
     trinket_dimension = ndb.KeyProperty(kind='Dimension')
-    author = ndb.KeyProperty(kind='Account')
     
     @classmethod
     def query_request(cls, ancestor_key):
@@ -146,7 +145,7 @@ class RequestBuilderPage(RestrictedHandler):
     def get(self):
         check = self.login_check(2)
         
-        requests = Request.query().fetch()
+        requests = Request.query(ancestor=check['account'].key).fetch()
         
         template_values = {
             'account': check['account'],
@@ -175,7 +174,7 @@ class MyRequestsPage(RestrictedHandler):
     def get(self):
         check = self.login_check(2)
         
-        requests = Request.query().fetch()
+        requests = Request.query(ancestor=check['account'].key).fetch()
         wcl_classes = Reference.get_by_id('wcl_classes')
         
         template_values = {
@@ -224,11 +223,16 @@ class BuildRequestForm(RestrictedHandler):
         parameters = []
         spells = []
         batch = []
-        
-        #Construct the Request object:
-        new_request = Request()
+        #Construct (or pull) the Request object:
+        request = Request.query(Request.name==self.request.get('request_name'),
+                                ancestor=check['account'].key).get()
+        if request != None:
+            new_request = request
+        else:
+            new_request = Request(parent=check['account'].key)
         new_request.specialization = []
         new_request.dimensions = []
+        new_request.trinket_dimension = None
         for argument in arguments:
             element = parse_argument(argument)
             if element != None:
@@ -294,12 +298,11 @@ class SelectRequestForm(RestrictedHandler):
         check = self.login_check(2)
         
         request_type = self.request.get('request_type')
-        selected_request = self.request.get('request')
+        selected_request = int(self.request.get('request'))
         classes = Reference.get_by_id("wcl_classes").json
         if request_type == 'existing':
             #Query NDB for the request and its dimensions and parameters.
-            request_complete = Request.query(
-                Request.name == selected_request).fetch()[0]
+            request_complete = Request.get_by_id(selected_request, parent=check['account'].key)
             dimensions_qry = ndb.get_multi(request_complete.dimensions)
             dimensions = []
             for dimension in dimensions_qry:
