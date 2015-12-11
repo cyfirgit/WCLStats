@@ -11,9 +11,9 @@
 			<div class="row form-group">
 				<div class="col-sm-6">
 					<label for="nickname">Nickname</label>
-					<input type="text" class="form-control" id="nickname"
-						{% if account.user.nickname != none %}
-							value="{{ account.user.nickname }}" 
+					<input type="text" class="form-control" name="nickname"
+						{% if account.nickname != none %}
+							value="{{ account.nickname }}" 
 						{% else %}
 							placeholder="Enter a nickname" 
 						{% endif %}
@@ -23,17 +23,17 @@
 			<div class="row form-group">
 				<div class="col-sm-6">
 					<label for="email">Email</label>
-					<input type="email" class="form-control" id="email"
-						{% if account.user.email != none %}
-							value="{{ account.user.email }}"
+					<input type="email" class="form-control" name="email"
+						{% if account.email != none %}
+							value="{{ account.email }}"
 						{% else %}
 							placeholder="Enter an email address"
-						{% endif %}>
+						{% endif %} required>
 				</div>
 			</div>
 			<div class="row">
 				<div class="col-sm-6">
-					<h3>Your account level is: <b>{{ levels[account.user.level|string] }}</b></h3>
+					<h3>Your account level is: <b>{{ levels[account.level|string] }}</b></h3>
 				</div>
 			</div>
 			<div class="row form-group">
