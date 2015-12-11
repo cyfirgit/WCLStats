@@ -15,11 +15,15 @@ function setID(idType, dimension, parameter, spell_id) {
 		};
 	};	
 };
-
+//This is a dumb thing I have to do and I don't know why.
+function selectRequestHelper() {
+	selectedRequest = this.id;
+	selectedRequestName = this.dataset.requestName;
+	selectRequest(selectedRequest, selectedRequestName);
+}
 //when a request is selected from the dropdown, loads it into the request builder
-function selectRequest() {
-	var selectedRequest = this.id;
-	$( '#requestName' ).val(this.dataset.requestname);
+function selectRequest(selectedRequest, selectedRequestName) {
+	$( '#requestName' ).val(selectedRequestName);
 	
 	var data = {
 		request: selectedRequest,
@@ -238,7 +242,7 @@ function checkEnter(e){
 
 $(document).ready(function() {
 	document.querySelector('form').onkeypress = checkEnter;
-	$( "#selectRequest li a" ).click(selectRequest);
+	$( "#selectRequest li a" ).click(selectRequestHelper);
 	$( "#newRequest" ).click(newRequest);
 	$(document).on('change', 'select#characterClass', function(){changeClass(this.value)});
 	$(document).on('click', 'button#addTrinkets', function(){addTrinkets()});

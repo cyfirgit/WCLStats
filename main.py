@@ -144,10 +144,22 @@ class MainPage(RestrictedHandler):
 class RequestBuilderPage(RestrictedHandler):
     def get(self):
         check = self.login_check(2)
-        
+        if 'request' in self.request.GET:
+            request_id = int(self.request.GET['request'])
+            query_result = Request.get_by_id(request_id,
+                                             parent=check['account'].key)
+            logging.info("*****query against %d*****" % request_id)
+            logging.info("*****result: %s******" % query_result)
+            if query_result != None:
+                selected_request = query_result
+            else:
+                selected_request = None
+        else:
+            selected_request = None
         requests = Request.query(ancestor=check['account'].key).fetch()
         
         template_values = {
+            'selected_request': selected_request,
             'account': check['account'],
             'log_url': check['log_url'],
             'requests': requests,

@@ -34,6 +34,9 @@
 			</div>
 			<div id="requestForm"></div>
 		</form>
+		{% if selected_request != none %}
+			<script>selectRequest({{ selected_request.key.id() }},'{{ selected_request.name }}')</script>
+		{% endif %}
 	</div>
 
 {% endblock %}
