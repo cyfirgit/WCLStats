@@ -6,6 +6,69 @@
 {% endblock %}
 
 {% block content %}
+	<!-- Pull Request Modal -->
+	<div class="modal fade" id="buildPullModal" tabindex="-1" role="dialog" 
+		aria-labelledby="buildPullModalLabel">
+	  <div class="modal-dialog" role="document">
+		<div class="modal-content">
+		  <div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" 
+				aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			<h4 class="modal-title" id="buildPullModalLabel"></h4>
+		  </div>
+		  <div class="modal-body">
+			<div id="modalError"></div>
+		    <table class="table">
+			<tr>
+			  <th>Difficulty</th>
+			  <th>Encounters</th>
+			  <th>Metric</th>
+		    </tr>
+			<tr>
+			  <td>
+				{% for difficulty in difficulties %}
+				{% if difficulty.name != 'Flex' %}
+				  	<div class="checkbox">
+					  <label>
+					    <input type="checkbox" name="difficulty" value="{{ difficulty.id }}">
+						{{ difficulty.name }}
+					  </label>
+					</div>
+				{% endif %}
+				{% endfor %}
+			  </td>
+			  <td>
+				{% for encounter in encounters %}
+				  	<div class="checkbox">
+					  <label>
+					    <input type="checkbox" name="encounter" value="{{ encounter.id }}">
+						{{ encounter.name }}
+					  </label>
+					</div>
+			    {% endfor %}
+			  </td>
+			  <td>
+				{% for metric in metrics %}
+				  	<div class="radio">
+					  <label>
+						<input type="radio" name="metric" value="{{ metric.id }}">
+						{{ metric.name }}
+					  </label>
+					</div>
+			    {% endfor %}
+			  </td>
+			</tr>
+			</table>
+				
+		  </div>
+		  <div class="modal-footer">
+			<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+			<button type="button" id="startPull" class="btn btn-primary">Start Pull</button>
+		  </div>
+		</div>
+	  </div>
+	</div>
+	
 	<div class="container">
 		<h1>My Requests</h1>
 		{% if requests|length != 0 %}

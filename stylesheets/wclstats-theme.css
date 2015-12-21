@@ -27,3 +27,6 @@ body {
 .bottom-buffer {
 	margin-bottom: 30px;
 }
+.modal-content {
+	background-color: #2f2f2f;
+}

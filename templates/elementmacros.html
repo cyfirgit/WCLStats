@@ -267,8 +267,9 @@
 			<li>
 				<button type="button" class="btn btn-default" 
 					aria-label="Build Pull" id="buildPull" 
-					value="{{ request.key.id() }}" data-toggle="tooltip"
-					data-placement="top" title="Build Pull">
+					value="{{ request.key.id() }}" 
+					data-request-name="{{ request.name }}" 
+					data-toggle="modal" data-target="#buildPullModal">
 					<span class="glyphicon glyphicon-cloud-download" 
 						aria-hidden="true"></span>
 				</button>

@@ -6,15 +6,13 @@
     #Build web interface for pull requests
         #Pull Builder code
         #My Pulls page
-    #Add user account controls
-        #Finish adding complete account checking code
-        #add the /updateaccount handler
-        #filter ndb results by account
 
 #Later:    
     #Implement decremental request size to respond to timeout issues.
     #Make request names unique within author's requests
     #Fix specialization singular in Request model
+    #Add by-patch filtering to the date range selector of Build Pull modal.
+    #Date selection in Build Pull modal at all.
 
 import os
 import jinja2
@@ -28,7 +26,7 @@ from google.appengine.api import users
 import requests
 import exportdata
 
-
+CURRENT_TIER_ZONE = "Hellfire Citadel"
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
@@ -148,8 +146,6 @@ class RequestBuilderPage(RestrictedHandler):
             request_id = int(self.request.GET['request'])
             query_result = Request.get_by_id(request_id,
                                              parent=check['account'].key)
-            logging.info("*****query against %d*****" % request_id)
-            logging.info("*****result: %s******" % query_result)
             if query_result != None:
                 selected_request = query_result
             else:
@@ -187,13 +183,25 @@ class MyRequestsPage(RestrictedHandler):
         check = self.login_check(2)
         
         requests = Request.query(ancestor=check['account'].key).fetch()
-        wcl_classes = Reference.get_by_id('wcl_classes')
+        wcl_classes = Reference.get_by_id('wcl_classes').json
+        zones = Reference.get_by_id('wcl_zones').json
+        for zone in zones:
+            #Right now I'm limiting pulls to the current tier.  Maybe later for
+            #others, but I don't know how useful it would be anyway.
+            if zone['name'] == CURRENT_TIER_ZONE:
+                encounters = zone['encounters']
+                break
+        metrics = Reference.get_by_id('metrics').json
+        difficulties = Reference.get_by_id('difficulties').json
         
         template_values = {
             'account': check['account'],
             'log_url': check['log_url'],
             'requests': requests,
-            'wcl_classes': wcl_classes.json,
+            'wcl_classes': wcl_classes,
+            'encounters': encounters,
+            'metrics': metrics,
+            'difficulties': difficulties,
             }
         template = JINJA_ENVIRONMENT.get_template("templates/myrequests.html")
         self.response.write(template.render(template_values))
@@ -509,12 +517,30 @@ def initialize():
             }
         ]
     metrics_manual = [
-        "dps",
-        "hps",
-        "bossdps",
-        "tankhps",
-        "playerspeed",
-        "krsi"
+        {
+            "id": 1,
+            "name": "dps"
+            },
+        {
+            "id": 2,
+            "name": "hps"
+            },
+        {
+            "id": 3,
+            "name": "bossdps"
+            },
+        {
+            "id": 4,
+            "name": "tankhps"
+            },
+        {
+            "id": 5,
+            "name": "playerspeed"
+            },
+        {
+            "id": 6,
+            "name": "krsi"
+            },
         ]
         
     account_levels_manual = {
