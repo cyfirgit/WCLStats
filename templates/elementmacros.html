@@ -346,3 +346,26 @@
 		<td id="level_{{ user.userid }}">{{ user.account_level }}</td>
 	</tr>
 {%- endmacro %}
+
+<!-- mypulls.html macros -->
+{% macro pull_row_template(pull, request, difficulties, encounters, metrics) -%}
+	<tr>
+		<td>
+			{% if pull.status == 'Ready' %}
+				<a href="https://storage.googleapis.com/wclstats.appspot.com/{{ pull.key.id() }}-{{ pull.request.id() }}.csv">
+					<button class="btn btn-success" type="button">
+						<span class="glyphicon glyphicon-save"></span> {{ pull.status }}
+					<button>
+				</a>
+			{% elif pull.status == 'Processing' %}
+				<span class="label label-info">{{ pull.status }}</span>
+			{% elif pull.status == 'Queued' %}
+				<span class="label label-warning">{{ pull.status }}</span>
+			{% endif %}
+		</td>
+		<td>{{ request }}</td>
+		<td>{{ difficulties[pull.difficulty] }}</td>
+		<td>{{ encounters[pull.encounter] }}</td>
+		<td>{{ metrics[pull.metric] }}</td>
+	</tr>
+{%- endmacro %}

@@ -4,8 +4,7 @@
 
 #For prototype:
     #Build web interface for pull requests
-        #Pull Builder code
-        #My Pulls page
+        #MyPullsPage handler
 
 #Later:    
     #Implement decremental request size to respond to timeout issues.
@@ -97,6 +96,7 @@ class Pull(ndb.Model):
     difficulty = ndb.IntegerProperty()
     metric = ndb.StringProperty()
     results = ndb.StringProperty()
+    status = ndb.StringProperty()
     
     
 class Parameter(ndb.Model):
@@ -516,6 +516,7 @@ class BuildPullForm(RestrictedHandler):
                                 difficulty=int(difficulty),
                                 encounter=int(encounter),
                                 metric=int(metric),
+                                status='Queued',
                                 )
                 new_pull.put()
                 # add a pull task for that Pull object to the taskqueue
@@ -532,17 +533,22 @@ class PullWorker(webapp2.RequestHandler):
     user_id = int(self.request.get('user_id'))
     pull_id = int(self.request.get('pull_id'))
     pull = Pull.get_by_id(pull_id, parent=('Account', user_id))
+    # Flag the pull as in process.
+    pull.status = 'Processing'
+    pull.put()
     # Run the pull through the pull request process
     ranks = requests.rankings_pull_filtered(pull)
     # Format the data as a CSV
     results = requests.csv_output(ranks, pull)
-    # Store the CSV in the results element & flag the Pull complete.
+    # Store the CSV in the results element.
     filename = pull_id + "-" + user_id
     gcs_file = gcs.open(filename, 'w', 
                         content_type='text/csv; charset=UTF-8; header=present')
     gcs_file.write(results)
     gcs_file.close()
     pull.results = filename
+    # Flag the pull as completed/ready and store to ndb.
+    pull.status = 'Ready'
     pull.put()
     
 #***Functions***
