@@ -10,7 +10,11 @@ handlers:
   
 - url: /resources
   static_dir: resources
-
+  
+- url: /tasks/.*
+  script: main.app
+  login: admin
+  
 - url: /.*
   script: main.app
 

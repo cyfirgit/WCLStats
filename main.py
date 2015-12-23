@@ -20,8 +20,10 @@ import webapp2
 import logging
 import json
 
+import couldstorage as gcs
 from google.appengine.ext import ndb
 from google.appengine.api import users
+from google.appengine.api import taskqueue
 
 import requests
 import exportdata
@@ -36,6 +38,8 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     
 class RestrictedHandler(webapp2.RequestHandler):
     def login_check(cls, level):
+        # Checks the current user against the permissions level of the page and
+        
         user = users.get_current_user()
         if user:
             account = Account.query(Account.user_id == user.user_id()).get()
@@ -92,7 +96,7 @@ class Pull(ndb.Model):
     encounter = ndb.IntegerProperty()
     difficulty = ndb.IntegerProperty()
     metric = ndb.StringProperty()
-    results = ndb.BlobKeyProperty()
+    results = ndb.StringProperty()
     
     
 class Parameter(ndb.Model):
@@ -487,7 +491,59 @@ class EditAccountForm(RestrictedHandler):
             }
         new_element_json = json.dumps(new_element)
         self.response.write(new_element_json)
-    
+        
+
+class BuildPullForm(RestrictedHandler):
+    #Take a request and build one or more pulls from it, then put those pulls
+    #into the taskqueue.
+    def post(self):
+        check = self.login_check(2)
+        
+        # Get the request being pulled against
+        request_id = self.request.get('request_id')
+        request = Request.get_by_id(request_id, parent=check['account'].key)
+        # Get all the difficulties and encounters for the pull
+        difficulties = self.request.get('difficulties')
+        encounters = self.request.get('encounters')
+        # Get the metric to examine
+        metric = self.request.get('metric')
+        # For each difficulty/encounter pair:
+        for difficulty in difficulties:
+            for encounter in encounters:
+                # add a Pull object to the database
+                new_pull = Pull(parent=check['account'].key,
+                                request=request.key,
+                                difficulty=int(difficulty),
+                                encounter=int(encounter),
+                                metric=int(metric),
+                                )
+                new_pull.put()
+                # add a pull task for that Pull object to the taskqueue
+                taskqueue.add(url='/tasks/pull', 
+                              params = {'user_id': check['account'].key.id(), 
+                                        'pull_id': new_pull.key.id()}
+                              )
+        # Redirect the user to their My Pulls page.	
+        self.redirect('/mypulls')
+        
+class PullWorker(webapp2.RequestHandler):
+    # Pull request task for the task queue.
+    # Get the pull to add to the taskqueue.
+    user_id = int(self.request.get('user_id'))
+    pull_id = int(self.request.get('pull_id'))
+    pull = Pull.get_by_id(pull_id, parent=('Account', user_id))
+    # Run the pull through the pull request process
+    ranks = requests.rankings_pull_filtered(pull)
+    # Format the data as a CSV
+    results = requests.csv_output(ranks, pull)
+    # Store the CSV in the results element & flag the Pull complete.
+    filename = pull_id + "-" + user_id
+    gcs_file = gcs.open(filename, 'w', 
+                        content_type='text/csv; charset=UTF-8; header=present')
+    gcs_file.write(results)
+    gcs_file.close()
+    pull.results = filename
+    pull.put()
     
 #***Functions***
 def initialize():
@@ -519,27 +575,27 @@ def initialize():
     metrics_manual = [
         {
             "id": 1,
-            "name": "dps"
+            "name": "DPS"
             },
         {
             "id": 2,
-            "name": "hps"
+            "name": "HPS"
             },
         {
             "id": 3,
-            "name": "bossdps"
+            "name": "Weighted DPS"
             },
         {
             "id": 4,
-            "name": "tankhps"
+            "name": "Tank HPS"
             },
         {
             "id": 5,
-            "name": "playerspeed"
+            "name": "Speed"
             },
         {
             "id": 6,
-            "name": "krsi"
+            "name": "KRSI"
             },
         ]
         
@@ -681,4 +737,5 @@ app = webapp2.WSGIApplication([
     ('/saveaccount', SaveAccountForm),
     ('/editaccount', EditAccountForm),
     ('/updateaccount', UpdateAccountForm),
+    ('/tasks/pull', PullWorker),
 ], debug=True)
