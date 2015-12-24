@@ -37,7 +37,6 @@ function buildPull(difficulties, encounters, metric) {
 	//POST the collected data to /buildpull.  Since /buildpull will redirect
 	//the user to their My Pulls page, there's no point in having a success function.
 	$.ajax({
-		dataType: "json",
 		type: "post",
 		url: '/buildpull',
 		data: ({

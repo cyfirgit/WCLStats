@@ -19,13 +19,12 @@ import webapp2
 import logging
 import json
 
-import couldstorage as gcs
+from google.appengine.ext import cloudstorage as gcs
 from google.appengine.ext import ndb
 from google.appengine.api import users
 from google.appengine.api import taskqueue
 
 import requests
-import exportdata
 
 CURRENT_TIER_ZONE = "Hellfire Citadel"
 
@@ -211,6 +210,44 @@ class MyRequestsPage(RestrictedHandler):
         self.response.write(template.render(template_values))
         
         
+class MyPullsPage(RestrictedHandler):
+    def get(self):
+        check = self.login_check(2)
+        
+        # Get user's pulls
+        pulls = Pull.query(ancestor=check['account'].key).fetch()
+        # For each pull, get the name of the associated request and add it to a
+        # dictionary of request names with pull ids as the keys
+        requests = {}
+        for pull in pulls:
+            request = Request.get_by_id(pull.request.id(), 
+                                        parent=pull.key.parent)
+            requests[pull.key.id()] = request.name
+        # Get the reference dictionaries needed for the page
+        difficulties = Reference.get_by_id('difficulties').json
+        metrics = Reference.get_by_id('metrics').json
+        # For encounters, get the zones reference and drill down to the current
+        # tier encounters.
+        zones = Reference.get_by_id('wcl_zones').json
+        for zone in zones:
+            if zone['name'] == CURRENT_TIER_ZONE:
+                encounters = zone['encounters']
+                break
+        
+        # Construct the template
+        template_values = {
+            'account': check['account'],
+            'log_url': check['log_url'],
+            'pulls': pulls,
+            'requests': requests,
+            'difficulties': difficulties,
+            'encounters': encounters,
+            'metrics': metrics,
+            }
+        template = JINJA_ENVIRONMENT.get_template("templates/mypulls.html")
+        self.response.write(template.render(template_values))
+        
+        
 class AccountSettingsPage(RestrictedHandler):
     def get(self):
         user = users.get_current_user()
@@ -233,6 +270,8 @@ class AccountSettingsPage(RestrictedHandler):
             }
         template = JINJA_ENVIRONMENT.get_template("templates/account.html")
         self.response.write(template.render(template_values))
+        
+        
 
 
 #***POST classes*** 
@@ -498,7 +537,7 @@ class BuildPullForm(RestrictedHandler):
     #into the taskqueue.
     def post(self):
         check = self.login_check(2)
-        
+        logging.info('****** Got to the handler ******')
         # Get the request being pulled against
         request_id = self.request.get('request_id')
         request = Request.get_by_id(request_id, parent=check['account'].key)
@@ -529,27 +568,28 @@ class BuildPullForm(RestrictedHandler):
         
 class PullWorker(webapp2.RequestHandler):
     # Pull request task for the task queue.
-    # Get the pull to add to the taskqueue.
-    user_id = int(self.request.get('user_id'))
-    pull_id = int(self.request.get('pull_id'))
-    pull = Pull.get_by_id(pull_id, parent=('Account', user_id))
-    # Flag the pull as in process.
-    pull.status = 'Processing'
-    pull.put()
-    # Run the pull through the pull request process
-    ranks = requests.rankings_pull_filtered(pull)
-    # Format the data as a CSV
-    results = requests.csv_output(ranks, pull)
-    # Store the CSV in the results element.
-    filename = pull_id + "-" + user_id
-    gcs_file = gcs.open(filename, 'w', 
-                        content_type='text/csv; charset=UTF-8; header=present')
-    gcs_file.write(results)
-    gcs_file.close()
-    pull.results = filename
-    # Flag the pull as completed/ready and store to ndb.
-    pull.status = 'Ready'
-    pull.put()
+    def post(self):
+        # Get the pull to add to the taskqueue.
+        user_id = int(self.request.get('user_id'))
+        pull_id = int(self.request.get('pull_id'))
+        pull = Pull.get_by_id(pull_id, parent=('Account', user_id))
+        # Flag the pull as in process.
+        pull.status = 'Processing'
+        pull.put()
+        # Run the pull through the pull request process
+        ranks = requests.rankings_pull_filtered(pull)
+        # Format the data as a CSV
+        results = requests.csv_output(ranks, pull)
+        # Store the CSV in the results element.
+        filename = pull_id + "-" + user_id
+        gcs_file = gcs.open(filename, 'w', 
+                            content_type='text/csv; charset=UTF-8; header=present')
+        gcs_file.write(results)
+        gcs_file.close()
+        pull.results = filename
+        # Flag the pull as completed/ready and store to ndb.
+        pull.status = 'Ready'
+        pull.put()
     
 #***Functions***
 def initialize():
@@ -732,16 +772,18 @@ def parse_argument(argument):
         
 app = webapp2.WSGIApplication([
     ('/', MainPage),
-    ('/requestbuilder', RequestBuilderPage),
-    ('/buildrequestform', BuildRequestForm),
-    ('/selectrequestform', SelectRequestForm),
-    ('/newelement', NewElementForm),
     ('/about', AboutPage),
-    ('/output', DownloadPage),
-    ('/myrequests', MyRequestsPage),
     ('/account', AccountSettingsPage),
-    ('/saveaccount', SaveAccountForm),
+    ('/buildpull', BuildPullForm),
+    ('/buildrequestform', BuildRequestForm),
     ('/editaccount', EditAccountForm),
+    ('/mypulls', MyPullsPage),
+    ('/myrequests', MyRequestsPage),
+    ('/newelement', NewElementForm),
+    ('/output', DownloadPage),
+    ('/requestbuilder', RequestBuilderPage),
+    ('/selectrequestform', SelectRequestForm),
+    ('/saveaccount', SaveAccountForm),
     ('/updateaccount', UpdateAccountForm),
     ('/tasks/pull', PullWorker),
 ], debug=True)
