@@ -23,30 +23,13 @@ function validatePull() {
 	//If the error message is still blank, everything validated, so start the
 	//buildPull POST.
 	if (errorMessage === "") {
-		buildPull(difficulties, encounters, metric)
+		$( "#buildPullForm" ).submit();
 	//Otherwise, add a bootstrap alert with all the error messages to the modal.
 	} else {
 		$( '#modalError' ).html('<div class="alert alert-warning" role="alert">' + errorMessage	+ '</div>');
 	}
 };
 
-function buildPull(difficulties, encounters, metric) {
-	//collect the request ID (the other data is already assessed by the validation
-	//function, so just pass that data rather than calling it again.)
-	requestID = $( '#modalHeader' ).data('request-id')
-	//POST the collected data to /buildpull.  Since /buildpull will redirect
-	//the user to their My Pulls page, there's no point in having a success function.
-	$.ajax({
-		type: "post",
-		url: '/buildpull',
-		data: ({
-			'difficulties': difficulties,
-			'encounters': encounters,
-			'metric': metric,
-			'request_id': requestID,
-		}),
-	});
-}
 
 $(document).ready(function() {
 	$('#buildPullModal').on('show.bs.modal', function(e) {
@@ -56,6 +39,9 @@ $(document).ready(function() {
 		
 		//Add the request name to the modal title.
 		$(e.currentTarget).find('h4[id="buildPullModalLabel"]').html('<div id="modalHeader" data-request-id="' + requestID + '">Request: ' + requestName +'</div>');
+		
+		//Add the request ID as the value for a hidden form input to pass to the handler.
+		$(e.currentTarget).find('input[id="requestID"]').val(requestID)
 		
 	});
 	$('[data-toggle="tooltip"]').tooltip();

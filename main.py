@@ -6,6 +6,7 @@
     #Build web interface for pull requests
         #MyPullsPage handler
 
+
 #Later:    
     #Implement decremental request size to respond to timeout issues.
     #Make request names unique within author's requests
@@ -18,8 +19,8 @@ import jinja2
 import webapp2
 import logging
 import json
+import cloudstorage as gcs
 
-from google.appengine.ext import cloudstorage as gcs
 from google.appengine.ext import ndb
 from google.appengine.api import users
 from google.appengine.api import taskqueue
@@ -68,15 +69,7 @@ class RestrictedHandler(webapp2.RequestHandler):
         return result
     
 
-#***NDB Model classes***    
-class Difficulty(ndb.Model):
-    name = ndb.StringProperty()
-    
-    
-class Metric(ndb.Model):
-    name = ndb.StringProperty()
-    
-    
+#***NDB Model classes***
 class Reference(ndb.Model):
     json = ndb.JsonProperty()
     
@@ -220,8 +213,7 @@ class MyPullsPage(RestrictedHandler):
         # dictionary of request names with pull ids as the keys
         requests = {}
         for pull in pulls:
-            request = Request.get_by_id(pull.request.id(), 
-                                        parent=pull.key.parent)
+            request = pull.request.get()
             requests[pull.key.id()] = request.name
         # Get the reference dictionaries needed for the page
         difficulties = Reference.get_by_id('difficulties').json
@@ -361,9 +353,9 @@ class SelectRequestForm(RestrictedHandler):
         check = self.login_check(2)
         
         request_type = self.request.get('request_type')
-        selected_request = int(self.request.get('request'))
         classes = Reference.get_by_id("wcl_classes").json
         if request_type == 'existing':
+            selected_request = int(self.request.get('request'))
             #Query NDB for the request and its dimensions and parameters.
             request_complete = Request.get_by_id(selected_request, parent=check['account'].key)
             dimensions_qry = ndb.get_multi(request_complete.dimensions)
@@ -413,6 +405,7 @@ class SelectRequestForm(RestrictedHandler):
                 'class_index': class_index,
                 }
         else:
+            selected_request = self.request.get('request')
             request_data = {
                 'selected_request': selected_request,
                 'character_class': 'new',
@@ -537,13 +530,12 @@ class BuildPullForm(RestrictedHandler):
     #into the taskqueue.
     def post(self):
         check = self.login_check(2)
-        logging.info('****** Got to the handler ******')
         # Get the request being pulled against
-        request_id = self.request.get('request_id')
+        request_id = int(self.request.get('request_id'))
         request = Request.get_by_id(request_id, parent=check['account'].key)
         # Get all the difficulties and encounters for the pull
-        difficulties = self.request.get('difficulties')
-        encounters = self.request.get('encounters')
+        difficulties = self.request.POST.getall('difficulty')
+        encounters = self.request.POST.getall('encounter')
         # Get the metric to examine
         metric = self.request.get('metric')
         # For each difficulty/encounter pair:
@@ -554,14 +546,14 @@ class BuildPullForm(RestrictedHandler):
                                 request=request.key,
                                 difficulty=int(difficulty),
                                 encounter=int(encounter),
-                                metric=int(metric),
+                                metric=metric,
                                 status='Queued',
                                 )
                 new_pull.put()
                 # add a pull task for that Pull object to the taskqueue
                 taskqueue.add(url='/tasks/pull', 
-                              params = {'user_id': check['account'].key.id(), 
-                                        'pull_id': new_pull.key.id()}
+                              params = {'user_id': str(check['account'].key.id()), 
+                                        'pull_id': str(new_pull.key.id())}
                               )
         # Redirect the user to their My Pulls page.	
         self.redirect('/mypulls')
@@ -569,10 +561,11 @@ class BuildPullForm(RestrictedHandler):
 class PullWorker(webapp2.RequestHandler):
     # Pull request task for the task queue.
     def post(self):
+        vislog('Task Started')
         # Get the pull to add to the taskqueue.
         user_id = int(self.request.get('user_id'))
         pull_id = int(self.request.get('pull_id'))
-        pull = Pull.get_by_id(pull_id, parent=('Account', user_id))
+        pull = Pull.get_by_id(pull_id, parent=ndb.Key('Account', user_id))
         # Flag the pull as in process.
         pull.status = 'Processing'
         pull.put()
@@ -581,10 +574,10 @@ class PullWorker(webapp2.RequestHandler):
         # Format the data as a CSV
         results = requests.csv_output(ranks, pull)
         # Store the CSV in the results element.
-        filename = pull_id + "-" + user_id
+        filename = '/wclstats.appspot.com/' + str(pull_id) + "-" + str(user_id)
         gcs_file = gcs.open(filename, 'w', 
                             content_type='text/csv; charset=UTF-8; header=present')
-        gcs_file.write(results)
+        gcs_file.write(results.encode('utf-8'))
         gcs_file.close()
         pull.results = filename
         # Flag the pull as completed/ready and store to ndb.
@@ -620,27 +613,27 @@ def initialize():
         ]
     metrics_manual = [
         {
-            "id": 1,
+            "id": "dps",
             "name": "DPS"
             },
         {
-            "id": 2,
+            "id": "hps",
             "name": "HPS"
             },
         {
-            "id": 3,
+            "id": "bossdps",
             "name": "Weighted DPS"
             },
         {
-            "id": 4,
+            "id": "tankhps",
             "name": "Tank HPS"
             },
         {
-            "id": 5,
+            "id": "playerspeed",
             "name": "Speed"
             },
         {
-            "id": 6,
+            "id": "krsi",
             "name": "KRSI"
             },
         ]
@@ -769,6 +762,9 @@ def parse_argument(argument):
     else:
         logging.error("Argument %s not recognized to parse." % argument)
         return 
+        
+def vislog(message):
+    logging.info('****** ' + str(message) + ' ******')
         
 app = webapp2.WSGIApplication([
     ('/', MainPage),
