@@ -355,7 +355,7 @@
 				<a href="https://storage.googleapis.com/wclstats.appspot.com/{{ pull.key.id() }}-{{ pull.key.parent().id() }}.csv">
 					<button class="btn btn-success" type="button">
 						<span class="glyphicon glyphicon-save"></span> {{ pull.status }}
-					<button>
+					</button>
 				</a>
 			{% elif pull.status == 'Processing' %}
 				<span class="label label-info">{{ pull.status }}</span>

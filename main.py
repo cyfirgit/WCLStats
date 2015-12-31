@@ -216,16 +216,27 @@ class MyPullsPage(RestrictedHandler):
             request = pull.request.get()
             requests[pull.key.id()] = request.name
         # Get the reference dictionaries needed for the page
-        difficulties = Reference.get_by_id('difficulties').json
-        metrics = Reference.get_by_id('metrics').json
+        difficulties_json = Reference.get_by_id('difficulties').json
+        metrics_json = Reference.get_by_id('metrics').json
         # For encounters, get the zones reference and drill down to the current
         # tier encounters.
         zones = Reference.get_by_id('wcl_zones').json
         for zone in zones:
             if zone['name'] == CURRENT_TIER_ZONE:
-                encounters = zone['encounters']
+                encounters_json = zone['encounters']
                 break
         
+        # Take the _json lists and convert to dictionaries.
+        difficulties = {}
+        metrics = {}
+        encounters = {}
+        for difficulty in difficulties_json:
+            difficulties[difficulty['id']] = difficulty['name']
+        for metric in metrics_json:
+            metrics[metric['id']] = metric['name']
+        for encounter in encounters_json:
+            encounters[encounter['id']] = encounter['name']
+            
         # Construct the template
         template_values = {
             'account': check['account'],
