@@ -27,7 +27,6 @@ def rankings_pull_filtered(pull):
     #the other functions below to actually structure, scale, and implement the
     #pull.
     
-    dimensions = {}
     result = []
     request = pull.request.get()
     encounter_id = pull.encounter,
@@ -38,6 +37,7 @@ def rankings_pull_filtered(pull):
         }
     
     for spec in request.specialization:
+        dimensions = {}
         pull_parameters['spec'] = spec
         
         #Pull NDB objects from stored keys and store them in a dictionary.
@@ -67,8 +67,10 @@ def rankings_pull_filtered(pull):
         
         #Build a list of filters to pull against from WCL, then send the pulls.
         filters = build_filters(dimensions)
+        main.vislog(filters)
         for filter in filters:
             get_filter = []
+            pull_parameters['filter'] = filter['filter']
             
             logging.info("Pulling ranks for %s" % filter["name"])
             
@@ -159,7 +161,7 @@ def build_filters(dimensions):
     return result
         
     
-def build_trinket_dimensions(trinkets_object):
+def build_trinket_dimensions(trinkets_dimension):
     #Take a set of trinket options and generate a dimensions dictionary to be
     #appended to the other dimensions.
     ''' Dictionary goes out as:
@@ -177,11 +179,11 @@ def build_trinket_dimensions(trinkets_object):
     #We need to create a list of all trinket effects we're considering.  During
     #the loop, we'll remove the other trinket's effect from this list for each
     #trinket considered.
-    trinkets = ndb.get_multi(trinkets_object.parameters)
+    trinkets = ndb.get_multi(trinkets_dimension.parameters)
     for trinket in trinkets:
         if trinket.include != None:
             trinkets_exclude_all += trinket.include
-    if trinkets_object.other_trinkets == True:
+    if trinkets_dimension.other_trinkets == True:
         result["Both Other Trinkets"] = {}
         result["Both Other Trinkets"]["include"] = None
         result["Both Other Trinkets"]["exclude"] = trinkets_exclude_all
@@ -241,7 +243,7 @@ def rankings_pull_all_pages(pull, parameters):
     #pages of applicable rankings.
     
     limit = 5000
-    page = 1
+    parameters['limit'] = limit
     
     for attempt in range(50):
         logging.info("Pull %d on first page" % (attempt + 1))
@@ -283,6 +285,7 @@ def rankings_pull(encounter_id, parameters):
             url_middle += "&" + parameter + "=" + str(parameters[parameter])
     
     url = url_base + url_middle + "&api_key=" + key
+    main.vislog(url)
         
     try:
         urlfetch.set_default_fetch_deadline(60)

@@ -3,8 +3,7 @@
 #PROJECT TODO:
 
 #For prototype:
-    #Build web interface for pull requests
-        #MyPullsPage handler
+    #Fix pull code
 
 
 #Later:    
@@ -356,7 +355,7 @@ class BuildRequestForm(RestrictedHandler):
         batch.append(new_request)
         result = ndb.put_multi(batch)
             
-        self.response.write(result)
+        self.redirect('/myrequests')
     
     
 class SelectRequestForm(RestrictedHandler):
@@ -585,7 +584,7 @@ class PullWorker(webapp2.RequestHandler):
         # Format the data as a CSV
         results = requests.csv_output(ranks, pull)
         # Store the CSV in the results element.
-        filename = '/wclstats.appspot.com/' + str(pull_id) + "-" + str(user_id)
+        filename = '/wclstats.appspot.com/' + str(pull_id) + "-" + str(user_id) + '.csv'
         gcs_file = gcs.open(filename, 'w', 
                             content_type='text/csv; charset=UTF-8; header=present')
         gcs_file.write(results.encode('utf-8'))

@@ -352,7 +352,7 @@
 	<tr>
 		<td>
 			{% if pull.status == 'Ready' %}
-				<a href="https://storage.googleapis.com/wclstats.appspot.com/{{ pull.key.id() }}-{{ pull.key.parent().id() }}.csv">
+				<a href="https://storage.cloud.google.com/wclstats.appspot.com/{{ pull.key.id() }}-{{ pull.key.parent().id() }}.csv">
 					<button class="btn btn-success" type="button">
 						<span class="glyphicon glyphicon-save"></span> {{ pull.status }}
 					</button>
