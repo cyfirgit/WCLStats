@@ -86,8 +86,9 @@ class Pull(ndb.Model):
     encounter = ndb.IntegerProperty()
     difficulty = ndb.IntegerProperty()
     metric = ndb.StringProperty()
-    results = ndb.StringProperty()
+    spec = ndb.IntegerProperty()
     status = ndb.StringProperty()
+    failed_pulls = ndb.KeyProperty(repeated=True)
     
     
 class Parameter(ndb.Model):
