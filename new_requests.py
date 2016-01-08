@@ -1,13 +1,17 @@
+import cloudstorage as gcs
+import json
+
 DEFAULT_LIMIT = 5000
 
 class Filter(ndb.Model):
     name = ndb.StringProperty()
     string = ndb.StringProperty()
     selections = ndb.StructuredProperty(Selection, repeated=True)
+    failed_pages = ndb.IntegerProperty(repeated=True)
     
 class Selection(ndb.Model):
     dimension = ndb.KeyProperty()
-    parameter = ndb.IntegerProperty()
+    parameter = ndb.KeyProperty()
 
 # Work a pull:
 def work_pull(pull):
@@ -22,7 +26,8 @@ def work_pull(pull):
                   str(pull.encounter) + "?metric=" + pull.metric +
                   "&difficulty=" + pull.difficulty +
                   "&class=" + str(request.character_class) +
-                  "&limit=" + str(DEFAULT_LIMIT))
+                  "&limit=" + str(DEFAULT_LIMIT)
+                  "&spec=" + str(pull.spec))
     
     # Build a list of "unpacked" pseudo dimensions - dictionaries in the format
     '''{
@@ -128,12 +133,12 @@ def work_pull(pull):
             names += dimensions_pseudo[j]['paramaters'][counter[j]].name + "|"
             new_selection = Selection(
                 dimension = dimensions_pseudo[j]['key'],
-                paramater = counter[j]
+                paramater = dimensions_pseudo[j]['paramaters'][counter[j]].key
                 )
             # Add Selection to the Filter.
             new_filter.selections.append(new_selection)
         # Add the entry to filters.
-        filter_string = "&filter="
+        filter_string = query_base + "&filter="
         if abilities != "":
             filter_string += "abilities." + abilities[:-1] + "|"
         if noabilities != "":
@@ -142,58 +147,58 @@ def work_pull(pull):
         new_filter.string = filter_string[:-1]
         filters.append(new_filter)
         
-        
-    # Determine how many total pulls will be necessary.
-    pull_counter = {}
-    for spec in request.specialization:
-        # Build a spec-specific query string of base string + spec argument.
-        spec_base = query_base + "&spec=" + str(spec)
-        # Determine how many pulls would be necessary for all ranks in the spec.
-        # This can be done in a resource-light manner by doing a dummy ranks
-        # pull with the filter 'abilities.9', as spell_ID 9 is not a spell and
-        # will filter out all actual ranks, returning only a total ranks value
-        # for the spec.
-        size_check_request = spec_base + "&filter=abilities.9"
-        for attempt in range(10):
-            try:
-                total_ranks = rankings_pull(size_check_request)['total']
-                break
-            except PullFailedError:
-                pass
-        else:
-            raise ProcessFailureError(
-                "Could not get ranks count for Pull %d from user %s on spec %d"
-                % (pull.key.id(), pull.parent.id(), spec))
-        pull_counter[spec] = ((total_ranks / DEFAULT_LIMIT) + 1)
-    # Add a total pulls entry.
-    pull_counter['total'] = 0
-    for spec in request.specialization:
-        pull_counter['total'] += pull_counter[spec] * len(filters)
-    # Start the progress counter at 0.
+    # Determine how many pulls would be necessary for all ranks. This
+    # can be done in a resource-light manner by doing a dummy ranks pull
+    # with the filter 'abilities.9', as spell_ID 9 is not a spell and will
+    # filter out all actual ranks, returning only a total ranks value.
+    size_check_request = query_base + "&filter=abilities.9"
+    for attempt in range(10):
+        try:
+            total_ranks = rankings_pull(size_check_request)['total']
+            break
+        except PullFailedError:
+            pass
+    else:
+        raise ProcessFailureError(
+            "Could not get ranks count for Pull %d from user %s"
+            % (pull.key.id(), pull.parent.id()))
+    pull_counter = ((total_ranks / DEFAULT_LIMIT) + 1)
+    # Start a progress counter at 0.
     progress_counter = 0
-    # For each spec:
-    for spec in request.specialization:
-        # Build a spec-specific query string of base string + spec argument.
-        spec_base = query_base + "&spec=" + str(spec)
-        # For each filter:
-        for filter in filters:
-            # Add the filter string to the spec query string.
-            query_string = spec_base + filter.string
-            # For each pull required:
-            for page in range(1, (pull_counter[spec] + 1)):
-                # Add the page number to the filter query string.
-                query_string += "&page=" + str(page)
-                # Pull ranks and add to combined results.
-                try:
-                    results += pull_ranks(query_string)
-                except PullFailedError as e:
-                    failed_pulls.append(query_string)
-                    logging.error(e.msg)
-                # Increment the progress counter.
-                progress_counter += 1
+    # For each filter:
+    for filter_ in filters:
+        filter_results = []
+        failed_pages = []
+        # Create a dict of dimension/paramater name tuples for the filter.
+        selections = {}
+        for selection in filter_.selections:
+            dimension = selection.dimension.get()
+            parameter = selection.parameter.get()
+            selections[dimension.name] = parameter.name
+        # For each pull required:
+        for page in range(1, (pull_counter + 1)):
+            # Add the page number to the filter query string.
+            query_string = filter_.string + "&page=" + str(page)
+            # Pull ranks and add to combined results.
+            try:
+                filter_results += pull_ranks(query_string)
+            except PullFailedError as e:
+                failed_pages.append(page)
+                logging.error(e.msg)
+            # Increment the progress counter.
+            progress_counter += 1
+        # Add the tuples in selections to each rank dict
+        for rank in filter_results:
+            rank.update(selections)
+        # Add filter_results to results
+        results += filter_results
+        # Store failed pulls in NDB and add to failed_pulls
+        if len(failed_pages) > 0:
+            filter_.failed_pages = failed pages
+            failed_pulls.append(filter_.put())
+            
     # Finish Pull Work.
     return finish_pull(pull, results, failed_pulls)
-    
         
         
 # Pull ranks:
@@ -223,41 +228,97 @@ def work_pull(pull):
         
         
 # Retry pull:
-    
+def retry_pull(pull)
+    progress_counter = 0
+    pull_counter = 0
+    filters = ndb.get_multi(pull.failed_pulls)
+    failed_filters = filters
+    for filter_ in filters:
+        pull_counter += len(filter_.failed_pages)
+    succeeded_pulls = []
+    results = []
     # Flag the pull as processing.
-
-    # Start a new failed_pulls list.
-    
-    # For each failed pull string:
-    
-        # Pull ranks.
-        
+    pull.status = 'Processing'
+    # For each failed filter:
+    for filter_ in filters:
+        # Create a dict of dimension/paramater name tuples for the filter.
+        selections = {}
+        for selection in filter_.selections:
+            dimension = selection.dimension.get()
+            parameter = selection.parameter.get()
+            selections[dimension.name] = parameter.name
+        # For each failed page:
+        for page in filter_.failed_pages:
+            # Add the page number to the filter query string.
+            query_string = filter_.string + "&page=" + str(page)
+            # Pull ranks and add to combined results.
+            try:
+                ranks += pull_ranks(query_string)
+                for rank in ranks:
+                    rank.update(selections)
+                filter_.failed_pages.remove(page)
+            except PullFailedError as e:
+                failed_pages.append(page)
+                logging.error(e.msg)
+            # Increment the progress counter.
+            progress_counter += 1
+        # If the filter was successfully completed, remove it from the list.
+        if len(filter_.failed_pages) == 0:
+            failed_filters.remove(filter_)
+            succeeded_pulls.append(filter_)
+    # Update any filters still in failed state.
+    if len(failed_filters) > 0:
+        failed_pulls = ndb.put_multi(failed_filters)
+    # Delete any successful filters.
+    if len(successful_filters) > 0:
+        ndb.delete_multi(succeeded_pulls)
     # Finish Pull.
-    
+    return finish_pull(pull, results, failed_pulls)
         
         
 # Finish Pull:
-    
-    # If combined results blob is empty:
-    
-        # Store the combined results to the pull as a blob.
-        
-    # Else:
-        
-        # Append the combined results to the existing blob.
+def finish_pull(pull, results, failed_pulls):
+    pull_id = pull.key.id()
+    user_id = pull.key.parent.id()
+    filename_core = '/wclstats.appspot.com/' + str(pull_id) + "-" + str(user_id)
+    # Try to open existing results for this pull:
+    results_filename = filename_core + ".json"
+    try:
+        gcs_file = gcs.open(results_filename, 'r', content_type='application/json')
+        # Add the old results to the new results.
+        old_results = json.load(gcs_file.read())
+        results.append(old_results)
+        gcs_file.close()
+        # Overwrite the existing results file in cloud storage with the update.
+        gcs_file = gcs.open(results_filename, 'w', content_type='application/json')
+        gcs_file.write(json.dump(results, ensure_ascii=False))
+        gcs_file.close()
+    # If there are no results yet:
+    except NotFoundError:
+        # Create a results file in cloud storage.
+        gcs_file = gcs.open(results_filename, 'w', content_type='application/json')
+        gcs_file.write(json.dump(results, ensure_ascii=False))
+        gcs_file.close()
     
     # If failed_pulls is empty:
-    
+    if len(failed_pulls) == 0:
+        csv_filename = filename_core + ".csv"
         # Encode the results as a csv.
-        
+        csv_results = csv_output(results, pull)
         # Store the csv in cloud storage.
-        
-        # Deleted the unencoded results blob.
-        
+        gcs_file = gcs.open(csv_filename, 'w', 
+                            content_type='text/csv; charset=UTF-8; header=present')
+        gcs_file.write(csv_results.encode('utf-8'))
+        gcs_file.close()
         # Flag the pull as complete.
-        
+        pull.failed_pulls = None
+        pull.status = 'Ready'
     # Else:
-    
+    else:
         # Store the failed_pulls list to the pull.
-        
+        pull.failed_pulls = failed_pulls
         # Flag the pull as incomplete.
+        pull.status = 'Incomplete'
+    
+    # Update the Pull in NDB.
+    pull.put()
