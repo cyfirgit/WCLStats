@@ -27,7 +27,8 @@ def work_pull(pull):
                   "&difficulty=" + pull.difficulty +
                   "&class=" + str(request.character_class) +
                   "&limit=" + str(DEFAULT_LIMIT)
-                  "&spec=" + str(pull.spec))
+                  "&spec=" + str(pull.spec) +
+                  "&api_key=" + json_pull("apikeys.json")["WCL"]["key"])
     
     # Build a list of "unpacked" pseudo dimensions - dictionaries in the format
     '''{
@@ -202,29 +203,27 @@ def work_pull(pull):
         
         
 # Pull ranks:
-    
+def pull_ranks(query_string):
     # Start with a timeout of 15 seconds.
-    
+    timeout = 15
     # Make the ranks pull API request.
-    
-    # If the pull succeeds:
-    
-        # For each rank returned:
-        
-            # Tag the rank with applicable parameter data.
-            
-        # Return the results.
-        
-    # Else if pull times out:
-    
-        # Double the timeout.
-        
-        # If this is less than / equal to 3rd attempt:
-        
-            # Try again. 
-
-    # If it gets here it failed, so Raise FailedPull Exception
-        
+    while retry == True
+        try:
+            urlfetch.set_default_fetch_deadline(timeout)
+            response = urlfetch.fetch(url)
+            result = json.loads(response.content)
+            # Return the results.
+            return result
+        # If pull times out:
+        except urlfetch.Error:
+            logging.error("Pull failed.")
+            # Double the timeout.
+            timeout *= 2
+            # If this is the fourth attempt, give up.
+            if timeout > 60:
+                retry = False
+    # If it gets here it failed, so Raise PullFailedError.
+    raise PullFailedError
         
         
 # Retry pull:
