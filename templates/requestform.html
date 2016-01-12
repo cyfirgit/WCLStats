@@ -35,7 +35,7 @@
 </div>
 <div class="row">
 	<div id="dimensions" class="col-sm-12">
-			{% if request['trinkets'] is defined %}
+			{% if request['trinkets']|length > 0 %}
 				{{ elements.trinkets(request['trinkets'], request['other_trinkets']) }}
 			{% else %}
 				{{ elements.no_trinkets() }}

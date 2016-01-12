@@ -12,6 +12,10 @@
     #Fix specialization singular in Request model
     #Add by-patch filtering to the date range selector of Build Pull modal.
     #Date selection in Build Pull modal at all.
+    #Use the deferred library for pull tasks.
+    #Change results property around
+    #Validation check for dimension names to prevent WCL ranks keywords.
+    #Make it stop building new dimensions on update.
 
 import os
 import jinja2
@@ -117,6 +121,7 @@ class Request(ndb.Model):
     specialization = ndb.IntegerProperty(repeated=True)
     dimensions = ndb.KeyProperty(kind='Dimension', repeated=True)
     trinket_dimension = ndb.KeyProperty(kind='Dimension')
+    parsed_trinket_dimension = ndb.KeyProperty(kind='Dimension')
     
     @classmethod
     def query_request(cls, ancestor_key):
@@ -214,10 +219,11 @@ class MyPullsPage(RestrictedHandler):
         requests = {}
         for pull in pulls:
             request = pull.request.get()
-            requests[pull.key.id()] = request.name
+            requests[pull.key.id()] = request
         # Get the reference dictionaries needed for the page
         difficulties_json = Reference.get_by_id('difficulties').json
         metrics_json = Reference.get_by_id('metrics').json
+        wcl_classes = Reference.get_by_id('wcl_classes').json
         # For encounters, get the zones reference and drill down to the current
         # tier encounters.
         zones = Reference.get_by_id('wcl_zones').json
@@ -246,6 +252,7 @@ class MyPullsPage(RestrictedHandler):
             'difficulties': difficulties,
             'encounters': encounters,
             'metrics': metrics,
+            'wcl_classes': wcl_classes,
             }
         template = JINJA_ENVIRONMENT.get_template("templates/mypulls.html")
         self.response.write(template.render(template_values))
@@ -329,6 +336,8 @@ class BuildRequestForm(RestrictedHandler):
                 elif element["type"] == "spell_id":
                     element["value"] = self.request.get(argument)
                     spells.append(element)
+                elif element["type"] == "no_trinkets":
+                    del new_request.trinket_dimension
         for param in parameters:
             dimensions[param['dimension']][param['parameter']]=param['obj']
         for spell in spells:
@@ -349,8 +358,10 @@ class BuildRequestForm(RestrictedHandler):
                     dimension['obj'].parameters.append(param_key)
                 batch.append(dimension['obj'])
             dimension_key = dimension['obj'].put()
-            if dim == 0:
+            if dim == 0 and self.request.get('no_trinkets') != 1:
                 new_request.trinket_dimension = dimension_key
+                parsed_trinket_dimension = parse_trinkets(dimension['obj'])
+                new_request.parsed_trinket_dimension = parsed_trinket_dimension
             else:
                 new_request.dimensions.append(dimension_key)
         batch.append(new_request)
@@ -549,23 +560,25 @@ class BuildPullForm(RestrictedHandler):
         encounters = self.request.POST.getall('encounter')
         # Get the metric to examine
         metric = self.request.get('metric')
-        # For each difficulty/encounter pair:
+        # For each difficulty/encounter/spec combination:
         for difficulty in difficulties:
             for encounter in encounters:
-                # add a Pull object to the database
-                new_pull = Pull(parent=check['account'].key,
-                                request=request.key,
-                                difficulty=int(difficulty),
-                                encounter=int(encounter),
-                                metric=metric,
-                                status='Queued',
-                                )
-                new_pull.put()
-                # add a pull task for that Pull object to the taskqueue
-                taskqueue.add(url='/tasks/pull', 
-                              params = {'user_id': str(check['account'].key.id()), 
-                                        'pull_id': str(new_pull.key.id())}
-                              )
+                for spec in request.specialization:
+                    # add a Pull object to the database
+                    new_pull = Pull(parent=check['account'].key,
+                                    request=request.key,
+                                    difficulty=int(difficulty),
+                                    encounter=int(encounter),
+                                    metric=metric,
+                                    spec=spec,
+                                    status='Queued',
+                                    )
+                    new_pull.put()
+                    # add a pull task for that Pull object to the taskqueue
+                    taskqueue.add(url='/tasks/pull', 
+                                  params = {'user_id': str(check['account'].key.id()), 
+                                            'pull_id': str(new_pull.key.id())}
+                                  )
         # Redirect the user to their My Pulls page.	
         self.redirect('/mypulls')
         
@@ -581,21 +594,72 @@ class PullWorker(webapp2.RequestHandler):
         pull.status = 'Processing'
         pull.put()
         # Run the pull through the pull request process
-        ranks = requests.rankings_pull_filtered(pull)
-        # Format the data as a CSV
-        results = requests.csv_output(ranks, pull)
-        # Store the CSV in the results element.
-        filename = '/wclstats.appspot.com/' + str(pull_id) + "-" + str(user_id) + '.csv'
-        gcs_file = gcs.open(filename, 'w', 
-                            content_type='text/csv; charset=UTF-8; header=present')
-        gcs_file.write(results.encode('utf-8'))
-        gcs_file.close()
-        pull.results = filename
-        # Flag the pull as completed/ready and store to ndb.
-        pull.status = 'Ready'
-        pull.put()
+        requests.work_pull(pull)
     
 #***Functions***
+def parse_trinkets(trinket_dimension):
+    # Make a dimension with parameters for:
+        # - each possible combination of trinkets
+        # - and if necessary:
+            # - each trinket being paired with some other, undefined trinket
+            # - neither equipped trinket having been defined.'''
+    parameters = []
+    trinkets = ndb.get_multi(trinket_dimension.parameters)
+    # We use a theorem one stars and bars formula to determine the number of
+    # possible combinations of trinkets.  Because k is always 2 (number of 
+    # trinket slots,) the formula can be reduced significantly.
+    trinket_combinations = (len(trinkets)**2 - len(trinkets)) / 2
+    # Build parameters in our new dimension that represent each pair of 
+    # defined trinkets.
+    slot=[0,0]
+    for i in range(trinket_combinations):
+        # Iterate the trinket pairings.
+        slot[1] += 1
+        if slot[1] >= len(trinkets):
+            slot[0] += 1
+            slot[1] = slot [0] + 1
+        # Create a new Parameter representing combining the pair of
+        # trinkets.  This Parameter never gets stored in NDB, and is used
+        # in this pull worker only.
+        new_parameter = Parameter(
+            name = trinkets[slot[0]].name + "|" + trinkets[slot[1]].name,
+            include = trinkets[slot[0]].include + trinkets[slot[1]].include
+            )
+        # Add the new Parameter to the parameters list.
+        parameters.append(new_parameter)
+    # If the trinkets dimension is flagged to consider other trinkets:
+    if trinket_dimension.other_trinkets == True:
+        # Add a trinket to represent some other trinket.  We'll add all
+        # included spell IDs as excludes, though later we'll modify that.
+        other_trinkets = Parameter(name="Both Other Trinkets", exclude=[])
+        for trinket in trinkets:
+            other_trinkets.exclude += trinket.include
+        parameters.append(other_trinkets)
+        for trinket in trinkets:
+            # Add a new Parameter representing pairing a defined trinket
+            # with some other undefined trinket.
+            new_parameter = Parameter(
+                name = trinket.name + "|Other",
+                include = trinket.include,
+                exclude = other_trinkets.exclude,
+                )
+            # At this point, this is a useless parameter.  We need to
+            # remove all of our trinket's includes from the exclude list.
+            for include in new_parameter.include:
+                for exclude in new_parameter.exclude:
+                    if include == exclude:
+                        new_parameter.exclude.remove(exclude)
+            # Add the new Parameter to the parameters list.
+            parameters.append(new_parameter)
+    # Create a new dimension, parsed_trinket_dimension, to contain the new
+    # parameters.
+    parsed_trinket_dimension = Dimension(name='Trinkets')
+    # Store the parameters to NDB and add the keys to p_t_d.
+    parsed_trinket_dimension.parameters = ndb.put_multi(parameters)
+    # Store parsed_trinket_dimension to NDB and return the key.
+    return parsed_trinket_dimension.put()
+
+
 def initialize():
     #Used at service startup to populate NDB with class and zone data.
     class_data = requests.static_request("WCL", "classes")
@@ -770,6 +834,9 @@ def parse_argument(argument):
         result = {"type": "character_class"}
         return result
     
+    elif type_slug == "no_trinke":
+        result = {"type": "no_trinkets"}
+        
     else:
         logging.error("Argument %s not recognized to parse." % argument)
         return 

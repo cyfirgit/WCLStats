@@ -12,12 +12,13 @@
 				<tr>
 					<th>Status</th>
 					<th>Request</th>
+					<th>Specialization</th>
 					<th>Difficulty</th>
 					<th>Encounter</th>
 					<th>Metric</th>
 				</tr>
 				{% for pull in pulls %}
-					{{ elements.pull_row_template(pull, requests[pull.key.id()], difficulties, encounters, metrics) }}
+					{{ elements.pull_row_template(pull, requests[pull.key.id()], difficulties, encounters, metrics, wcl_classes) }}
 				{% endfor %}
 			</table>
 		{% else %}
