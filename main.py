@@ -6,8 +6,7 @@
     #Fix pull code
 
 
-#Later:    
-    #Implement decremental request size to respond to timeout issues.
+#Later:
     #Make request names unique within author's requests
     #Fix specialization singular in Request model
     #Add by-patch filtering to the date range selector of Build Pull modal.
@@ -16,6 +15,7 @@
     #Change results property around
     #Validation check for dimension names to prevent WCL ranks keywords.
     #Make it stop building new dimensions on update.
+    #Progress bars for pulls in progress.
 
 import os
 import jinja2
@@ -41,7 +41,7 @@ JINJA_ENVIRONMENT = jinja2.Environment(
 class RestrictedHandler(webapp2.RequestHandler):
     def login_check(cls, level):
         # Checks the current user against the permissions level of the page and
-        
+        # takes appropriate actions if user does not meet requirements.
         user = users.get_current_user()
         if user:
             account = Account.query(Account.user_id == user.user_id()).get()

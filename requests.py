@@ -193,7 +193,7 @@ def work_pull(pull):
 # Pull ranks:
 def pull_ranks(query_string):
     # Start with a timeout of 15 seconds.
-    timeout = 15
+    timeout = 30
     retry = True
     # Make the ranks pull API request.
     while retry == True:
@@ -210,7 +210,7 @@ def pull_ranks(query_string):
             # Double the timeout.
             timeout *= 2
             # If this is the fourth attempt, give up.
-            if timeout > 60:
+            if timeout > 120:
                 retry = False
     # If it gets here it failed, so Raise PullFailedError.
     raise PullFailedError("Pull failed with query string %s" % query_string)
