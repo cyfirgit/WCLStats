@@ -1,0 +1,58 @@
+{% import '/templates/elementmacros.html' as elements %}
+
+<!-- Begin Request Builder Form -->
+<div class="row">
+	<div class="col-sm-3">
+		<select id="characterClass" class="form-control" name="character_class">
+			{% if request['character_class'] == 'new' %}
+				<optgroup>
+					<option value="" disabled selected>Select a class</option>
+				<optgroup>
+			{% endif %}
+			{% for class_ in classes %}
+				<optgroup>
+					<option value="{{ class_['id'] }}" 
+						{% if class_['id'] == request['character_class'] %}
+							selected="selected" 
+						{% endif %}>
+						{{ class_['name'] }}
+					</option>
+				</optgroup>
+			{% endfor %}
+		</select>
+	</div>
+	<div id="indent" class="col-sm-1"></div>
+		{% if request_type == 'existing' %}
+			{{ elements.specializations_template(classes, request['class_index'], request['specializations']) }}
+		{% else %}
+			{{ elements.specializations_template(none, -1, none) }}
+		{% endif %}
+</div>
+<div class="row">
+	<div class="col-sm-2">
+		<h3>Dimensions</h3>
+	</div>
+</div>
+<div class="row">
+	<div id="dimensions" class="col-sm-12">
+			{% if request['trinkets']|length > 0 %}
+				{{ elements.trinkets(request['trinkets'], request['other_trinkets']) }}
+			{% else %}
+				{{ elements.no_trinkets() }}
+			{% endif %}
+		{% set start_id_dimension = 1 %}
+		{% for dimension in request['dimensions'] %}
+			{% set element_id_dimension = start_id_dimension + loop.index0 %}
+				<script>setID('dimension', {{ element_id_dimension }}, 0, 0)</script>
+				{{ elements.dimension_template(element_id_dimension, dimension, 'minus') }}
+		{% endfor %}
+		{{ elements.dimension_template('new_dimension', none, 'plus') }}
+	</div>
+</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<button class="btn btn-primary" id="btnSubmitRequest" type="submit">
+						Save Request
+					</button>
+				</div>
+			</div>

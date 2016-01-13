@@ -1,0 +1,43 @@
+{% extends 'templates/wclstats.html' %}
+
+{% block header %}
+	<script src="/resources/requestbuilder.js"></script>
+{% endblock %}
+
+{% block content %}
+	<div class="container">
+		<h1>Request Builder</h1>
+
+		<form class="colform-inline" method="POST" action="/buildrequestform">
+			<div class="row">
+				<div class="col-sm-12">
+					<div class="input-group col-sm-9">
+						<div class="input-group-btn">
+							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+								Select a request <span class="caret"></span>
+							</button>
+							<ul class="dropdown-menu" id="selectRequest">
+								{% for request in requests %}
+									<li><a id="{{ request.key.id() }}" data-requestname="{{ request.name }}">
+										{{ request.name }}
+									</a></li>
+								{% endfor %}
+							</ul>
+						</div>
+						<input type="text" class="form-control" id="requestName" name="request_name"
+						aria-label="Enter a name to create a new request:" placeholder="Enter a name to create a new request">
+						<div class="input-group-btn">
+							<button class="btn btn-primary" id="newRequest" type="button">Create New</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="requestForm"></div>
+		</form>
+		{% if selected_request != none %}
+			<script>selectRequest({{ selected_request.key.id() }},'{{ selected_request.name }}')</script>
+		{% endif %}
+	</div>
+
+{% endblock %}
+

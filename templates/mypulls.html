@@ -1,0 +1,28 @@
+{% extends 'templates/wclstats.html' %}
+{% import '/templates/elementmacros.html' as elements %}
+
+{% block header %}
+{% endblock %}
+
+{% block content %}
+	<div class="container">
+		<h1>My Pulls</h1>
+		{% if pulls|length != 0 %}
+			<table class="table">
+				<tr>
+					<th>Status</th>
+					<th>Request</th>
+					<th>Specialization</th>
+					<th>Difficulty</th>
+					<th>Encounter</th>
+					<th>Metric</th>
+				</tr>
+				{% for pull in pulls %}
+					{{ elements.pull_row_template(pull, requests[pull.key.id()], difficulties, encounters, metrics, wcl_classes) }}
+				{% endfor %}
+			</table>
+		{% else %}
+			<h5>You don't have any pulls yet!  Check your requests, and build a pull off of one.</h5>
+		{% endif %}
+	</div>
+{% endblock %}

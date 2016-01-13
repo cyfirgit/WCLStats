@@ -1,0 +1,45 @@
+{% extends 'templates/wclstats.html' %}
+
+{% block content %}
+	<div class="container">
+		<div class="row">
+			<div class="col-sm-6">
+				<h1>Update Account Information</h1>
+			</div>
+		</div>
+		<form action="/updateaccount" method="post">
+			<div class="row form-group">
+				<div class="col-sm-6">
+					<label for="nickname">Nickname</label>
+					<input type="text" class="form-control" name="nickname"
+						{% if account.nickname != none %}
+							value="{{ account.nickname }}" 
+						{% else %}
+							placeholder="Enter a nickname" 
+						{% endif %}
+						required>
+				</div>
+			</div>
+			<div class="row form-group">
+				<div class="col-sm-6">
+					<label for="email">Email</label>
+					<input type="email" class="form-control" name="email"
+						{% if account.email != none %}
+							value="{{ account.email }}"
+						{% else %}
+							placeholder="Enter an email address"
+						{% endif %} required>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-6">
+					<h3>Your account level is: <b>{{ levels[account.level|string] }}</b></h3>
+				</div>
+			</div>
+			<div class="row form-group">
+				<div class="col-sm-6">
+					<button type="submit" class="btn btn-default">Update</button>
+				</div>
+			</div>
+		</form>
+{% endblock %}

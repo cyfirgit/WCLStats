@@ -4,10 +4,26 @@ runtime: python27
 api_version: 1
 threadsafe: yes
 
-handlers:
-- url: .*
-  script: wclstats.app
-
+handlers:  
+- url: /stylesheets
+  static_dir: stylesheets
+  
+- url: /resources
+  static_dir: resources
+  
+- url: /tasks/.*
+  script: main.app
+  login: admin
+  
+- url: /admin/.*
+  script: google.appengine.ext.admin.application
+  login: admin
+  
+- url: /.*
+  script: main.app
+  
 libraries:
 - name: webapp2
   version: "2.5.2"
+- name: jinja2
+  version: "2.6"
