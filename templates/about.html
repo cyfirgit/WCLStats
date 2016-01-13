@@ -6,7 +6,138 @@
 {% block content %}
 	<div class="container">
 		<h1>About WCL Stats</h1>
-		
+		<h2>Introduction</h2>
+
+		<p>WCL Stats is a web application that interfaces with Warcraft Logs to 
+		retrieve rank data catalogued across various dimensions to include 
+		talent selection, trinkets, and gear set bonuses. WCL Stats harnesses 
+		the massive amount of log data processed by WCL to help players make 
+		informed decisions for their character. WCL Stats can take any player 
+		decision that can be determined by the presence (or absence) of one or 
+		more spells in a player’s log and compare performance of players who 
+		have made that decision against players who have made other decisions.
+		</p>
+
+		<p></p>
+
+		<h2>What WCL Stats Is</h2>
+
+		<p><b>-WCL Stats is <i>actual</i>.</b> Even the most sophisticated 
+		simulation relies on assumptions and simplifications to make thousands 
+		of 5-minute fights play out in less than a minute. WCL Stats uses 
+		actual performance results, so every complexity of the actual fight is 
+		represented in the data.</p>
+
+		<p><b>-WCL Stats is <i>normative</i>.</b> Because WCL Stats handles 
+		very large data sets, the analysis provided by WCL Stats is resistant 
+		to skewing from atypical play (i.e. “rank cheesing”,) and unskilled 
+		play. WCL Stats relies on statistical norms to return data that is 
+		indicative of how most players matching a given set of criteria 
+		perform, rather than how they can perform under “perfect” conditions.
+		</p>
+
+		<p><b>-WCL Stats is <i>flexible</i>.</b> WCL Stats was conceived 
+		specifically to compare the performance of talents and trinkets, 
+		but it is not limited to these two considerations. Any decision 
+		represented by a spellID passed to logs can be analyzed through WCL 
+		Stats.</p>
+
+		<p></p>
+
+		<h2>What WCL Stats Is NOT</h2>
+
+		<p><b>-WCL Stats is NOT predictive.</b>If a decision has not been 
+		played out by a statistically significant portion of players, WCL 
+		Stats cannot evaluate that decision. This represents the core 
+		limitation of WCL Stats. Because of this, WCL Stats cannot answer the 
+		following questions:</p>
+
+		<p style='margin-left:.5in'>- It’s patch day. What’s the new optimal 
+		decision?</p>
+
+		<p style='margin-left:.5in'>- Yes, but are we <i>sure</i> the talent 
+		nobody ever uses is bad?</p>
+
+		<p style='margin-left:.5in'>- What is the optimal decision for 
+		bleeding edge content?</p>
+
+		<p><b>-WCL Stats is NOT a logs crawler, or a logs parser.</b> WCL 
+		Stats relies on the WCL Ranks API, and would not be possible without 
+		the parsing and indexing WCL has already performed on the relevant 
+		data. The API allows ranks results to be filtered by requiring or 
+		excluding spell IDs, which is the core of WCL Stat’s functionality. 
+		If a decision cannot be represented by a unique spell ID that is 
+		passed to the combat log, WCL has no way to analyze it. Some set 
+		bonuses, for example, apply a hidden aura that modifies a player’s 
+		spells. Because the hidden aura is not passed to logs, such set 
+		bonuses are invisible to WCL Stats. Static trinkets (those with no on 
+		use/on equip effect,) similarly do not present a spellcast to the 
+		combat log and appear indistinguishable from simply leaving a trinket 
+		slot empty.</p>
+
+		<p><b>-WCL Stats is NOT perfectly representative.</b> Formally, we define 
+		the sample group examined by WCL Stats to be the *best* performance 
+		result achieved by each player who has killed a given boss while using 
+		the ability set defined by the applied filter. Because of this, we can 
+		reasonably expect the following skews to occur:</p>
+
+		<p style='margin-left:.5in'>- Decisions that rely 
+		heavily on random chance or high levels of skill will skew towards 
+		higher results compared to those that provide consistent results, or 
+		those that are easily executed by most players.</p>
+
+		<p style='margin-left:.5in'>- Decisions that yield 
+		performance at the cost of survivability will not show the tradeoff 
+		cost effectively, or at all.</p>
+
+		<p style='margin-left:.5in'>- Results will be 
+		reflective of the population “Warcraft players whose raid is captured 
+		by someone’s log,” rather than “Warcraft players who raid.” While we 
+		assess the difference here is of negligible importance – most players 
+		who take the effort to read a statistical analysis of talent 
+		performance are likely <i>better</i> served by a population that 
+		excludes players who don’t log combat data – it is nevertheless 
+		important to acknowledge.</p>
+
+		<p></p>
+
+		<h2>How WCL Stats works</h2>
+
+		<p>WCL Stats is given a set of <i>dimensions</i> to query against the 
+		ranks API. A dimension is a defined set of mutually-exclusive player 
+		choices – for example, a row on the talent tree. Each dimension 
+		contains two or more choices, called <i>parameters</i>. (In the 
+		special case of trinkets, a dimension must contain at least three 
+		parameters, one of which can be “other trinkets.”) WCL Stats then 
+		structures a chain of queries against the ranks API that represents 
+		every possible combination of parameters. After combining each query 
+		into a single large dataset and then output that dataset in .csv 
+		format. If the parameters represent all possible choices in each 
+		dimension, this dataset will represent one data point for each player 
+		with a recorded rank in a given class specialization. Users can then 
+		manipulate this dataset in the program of their choice.</p>
+
+		<p></p>
+
+		<h2>Where is WCL Stats right now?</h2>
+
+		<p>Currently, WCL Stats is under development. I am opening access to 
+		WCL Stats to a small number of theorycrafters willing to help me iron 
+		out remaining bugs and test a few NYI features before releasing it 
+		into the wild.</p>
+
+		<p></p>
+
+		<h2>Where is WCL Stats going?</h2>
+
+		<p>The envisioned end state of WCL Stats is a one-stop tool for the 
+		theorycrafting community to gain insight from live data and check 
+		their work against actual performance. Due to the resource-intensive 
+		nature of the app’s methodology, the ability to pull data using the 
+		tool will likely be restricted to a handful of recognized 
+		theorycrafters per class; however, the data they pull will be made 
+		available for anyone to work with.</p>
+
 	</div>
 
 {% endblock %}
