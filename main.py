@@ -860,4 +860,4 @@ app = webapp2.WSGIApplication([
     ('/saveaccount', SaveAccountForm),
     ('/updateaccount', UpdateAccountForm),
     ('/tasks/pull', PullWorker),
-], debug=True)
+], debug=False)
