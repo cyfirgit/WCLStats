@@ -339,38 +339,32 @@ def csv_output(ranks, pull):
     #Start the file with the field names.
     for field in fieldnames:
         csvfile += field + ","
-    csvfile = new_line(csvfile)
+    csvfile += "\n"
     
     #Take each rank and format it as csv.
     for rank in ranks:
+        rank_line = ""
         for item in fieldnames:
             #If the item is the report link, take the fightID and turn it into
             #an actual URL.
             if item == "link":
-                csvfile += "https://www.warcraftlogs.com/reports/" + \
+                rank_line += "https://www.warcraftlogs.com/reports/" + \
                             rank["reportID"] + "#fight=" + \
                             str(rank["fightID"]) + ","
             #Mythic ranks pulls don't include a size field, so if it's a mythic
             #pull, we need to manually add "20" as the size.
             elif item == "size":
                 if is_mythic:
-                    csvfile += str(20) + ","
+                    rank_line += str(20) + ","
                 else:
-                    csvfile += unicode(rank[item]) + ","
+                    rank_line += unicode(rank[item]) + ","
             #For anything else, just get the applicable data and plug it in
             #under the correpsonding field name.
             else:
-                csvfile += unicode(rank[item]) + ","
-        csvfile = new_line(csvfile)
+                rank_line += unicode(rank[item]) + ","
+        rank_line += "\n"
+        csvfile += rank_line
     return csvfile
-    
-            
-def new_line(string):
-    #Replaces the final comma of a rank with a newline (\n).
-    index = len(string)
-    s = string[:(index - 1)]
-    string = s + "\n"
-    return string
 
 
 
