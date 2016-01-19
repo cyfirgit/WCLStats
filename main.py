@@ -3,7 +3,9 @@
 #PROJECT TODO:
 
 #For prototype:
-    #Fix pull code
+    #Track down this whoreson memory leak.
+    #Change the add/remove buttons to be more intuitive.
+    #Change the default pull limit.
 
 
 #Later:
