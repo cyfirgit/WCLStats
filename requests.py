@@ -25,6 +25,13 @@ class ProcessFailureError(Exception):
 
     
 def work_pull(pull):
+    author = pull.key.parent().get()
+    request = pull.request.get()
+    
+    main.vislog('Starting "%s" by %s' % (request.name, author.nickname))
+    
+    pull_id = pull.key.id()
+    user_id = pull.key.parent().id()
     response = {}
     results = {}
     filters = []
@@ -33,7 +40,6 @@ def work_pull(pull):
     max_page = 0
     dimension_name = ''
     parameter_name = ''
-    request = pull.request.get()
     dimensions = ndb.get_multi(request.dimensions)
     #Build a base query string from the Pull attributes.
     query_base = ("https://www.warcraftlogs.com:443/v1/rankings/encounter/" +
@@ -43,8 +49,6 @@ def work_pull(pull):
                   "&spec=" + str(pull.spec) +
                   "&api_key=" + json_pull("apikeys.json")["WCL"]["key"])
     #Get the requests and parameters.
-    pull_id = pull.key.id()
-    user_id = pull.key.parent().id()
     #Build Filter objects for each parameter. O(N) N=Parameters * spell ids
     for dimension in dimensions:
         parameters = ndb.get_multi(dimension.parameters)
@@ -184,6 +188,8 @@ def work_pull(pull):
     
     # Update the Pull in NDB.
     pull.put()
+    
+    main.vislog('"%s" by %s %s' % (request.name, author.nickname, pull.status))
     
 def json_pull(dct):
     #Pull data from a static .json file and load it into memory.

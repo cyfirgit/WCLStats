@@ -3,9 +3,7 @@
 #PROJECT TODO:
 
 #For prototype:
-    #Track down this whoreson memory leak.
     #Change the add/remove buttons to be more intuitive.
-    #Change the default pull limit.
 
 
 #Later:
@@ -14,10 +12,11 @@
     #Add by-patch filtering to the date range selector of Build Pull modal.
     #Date selection in Build Pull modal at all.
     #Use the deferred library for pull tasks.
-    #Change results property around
+    #Change results property around CLARIFY
     #Validation check for dimension names to prevent WCL ranks keywords.
     #Make it stop building new dimensions on update.
     #Progress bars for pulls in progress.
+    #Push data to user experience? Notifications pulls complete, progress?
 
 import os
 import jinja2
@@ -594,7 +593,6 @@ class BuildPullForm(RestrictedHandler):
 class PullWorker(webapp2.RequestHandler):
     # Pull request task for the task queue.
     def post(self):
-        vislog('Task Started')
         # Get the pull to add to the taskqueue.
         user_id = int(self.request.get('user_id'))
         pull_id = int(self.request.get('pull_id'))
