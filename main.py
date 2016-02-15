@@ -94,7 +94,7 @@ class Pull(ndb.Model):
     metric = ndb.StringProperty()
     spec = ndb.IntegerProperty()
     status = ndb.StringProperty()
-    failed_pulls = ndb.KeyProperty(repeated=True)
+    failed_filters = ndb.KeyProperty(repeated=True)
     
     
 class Parameter(ndb.Model):
@@ -128,6 +128,13 @@ class Request(ndb.Model):
     @classmethod
     def query_request(cls, ancestor_key):
         return cls.query(ancestor=ancestor_key).order(cls.name)
+
+        
+class Filter(ndb.Model):
+    string = ndb.StringProperty()
+    dimension = ndb.KeyProperty(kind=Dimension)
+    parameter = ndb.KeyProperty(kind=Parameter)
+    pages = ndb.IntegerProperty(repeated=True)
 
 	
 #***Page classes***
