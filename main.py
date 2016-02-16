@@ -1,12 +1,6 @@
 # coding: utf-8
 
 #PROJECT TODO:
-
-#For prototype:
-    #Change the add/remove buttons to be more intuitive.
-
-
-#Later:
     #Make request names unique within author's requests
     #Fix specialization singular in Request model
     #Add by-patch filtering to the date range selector of Build Pull modal.
@@ -17,6 +11,9 @@
     #Make it stop building new dimensions on update.
     #Progress bars for pulls in progress.
     #Push data to user experience? Notifications pulls complete, progress?
+    #Nasty repeating code in requests.py!
+    #BUG: You can try to save a request w/o a class.
+    #BUG: New parameter/dimension data every time you save a request, leaves old data.
 
 import os
 import jinja2
@@ -28,6 +25,8 @@ import cloudstorage as gcs
 from google.appengine.ext import ndb
 from google.appengine.api import users
 from google.appengine.api import taskqueue
+from google.appengine.ext import blobstore
+from google.appengine.ext.webapp import blobstore_handlers
 
 import requests
 
@@ -94,6 +93,7 @@ class Pull(ndb.Model):
     spec = ndb.IntegerProperty()
     status = ndb.StringProperty()
     failed_filters = ndb.KeyProperty(repeated=True)
+    results = ndb.StringProperty()
     
     
 class Parameter(ndb.Model):
@@ -109,7 +109,6 @@ class Parameter(ndb.Model):
 class Dimension(ndb.Model):
     name = ndb.StringProperty()
     parameters = ndb.KeyProperty(kind='Parameter', repeated=True)
-    other_trinkets = ndb.BooleanProperty()
     
     @classmethod
     def query_dimension(cls, ancestor_key):
@@ -122,7 +121,6 @@ class Request(ndb.Model):
     specialization = ndb.IntegerProperty(repeated=True)
     dimensions = ndb.KeyProperty(kind='Dimension', repeated=True)
     trinket_dimension = ndb.KeyProperty(kind='Dimension')
-    parsed_trinket_dimension = ndb.KeyProperty(kind='Dimension')
     
     @classmethod
     def query_request(cls, ancestor_key):
@@ -289,7 +287,15 @@ class AccountSettingsPage(RestrictedHandler):
         template = JINJA_ENVIRONMENT.get_template("templates/account.html")
         self.response.write(template.render(template_values))
         
-        
+		
+class DownloadPage(blobstore_handlers.BlobstoreDownloadHandler):
+    def get(self):
+        blob_key = self.request.get('blob_key')
+        # self.response.headers["Content-Type"] = 'application/csv; charset=utf-8'
+        # self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % 'output.csv'
+        self.send_blob(blob_key, 
+                       content_type='application/csv; charset=utf-8',
+                       save_as='output.csv') 
 
 
 #***POST classes*** 
@@ -327,9 +333,6 @@ class BuildRequestForm(RestrictedHandler):
                         self.request.get(argument)))
                 elif element["type"] == "trinkets":
                     new_dimension = Dimension(name='Trinkets')
-                    switch = self.request.get('include_other_trinkets')
-                    if switch == 'on':
-                        new_dimension.other_trinkets = True
                     dimensions[0] = {'obj': new_dimension}
                 elif element["type"] == "dimension":
                     new_dimension = Dimension(name=self.request.get(argument))
@@ -368,8 +371,6 @@ class BuildRequestForm(RestrictedHandler):
             dimension_key = dimension['obj'].put()
             if dim == 0 and self.request.get('no_trinkets') != 1:
                 new_request.trinket_dimension = dimension_key
-                parsed_trinket_dimension = parse_trinkets(dimension['obj'])
-                new_request.parsed_trinket_dimension = parsed_trinket_dimension
             else:
                 new_request.dimensions.append(dimension_key)
         batch.append(new_request)
@@ -406,7 +407,6 @@ class SelectRequestForm(RestrictedHandler):
             if request_complete.trinket_dimension != None:
                 trinkets_keys = Dimension.get_by_id(
                     request_complete.trinket_dimension.id())
-                other_trinkets = trinkets_keys.other_trinkets
                 trinkets_objects = ndb.get_multi(trinkets_keys.parameters)
                 trinkets = []
                 for trinket in trinkets_objects:
@@ -418,7 +418,6 @@ class SelectRequestForm(RestrictedHandler):
                     trinkets.append(new_trinket)
             else:
                 trinkets = []
-                other_trinkets = None
                 
             #Flag the class in the request as selected
             class_index = None
@@ -431,7 +430,6 @@ class SelectRequestForm(RestrictedHandler):
                 'specializations': request_complete.specialization,
                 'dimensions': dimensions,
                 'trinkets': trinkets,
-                'other_trinkets': other_trinkets,
                 'class_index': class_index,
                 }
         else:
@@ -485,19 +483,6 @@ class NewElementForm(RestrictedHandler):
             }
         new_element_json = json.dumps(new_element)
         self.response.write(new_element_json)
-        
-		
-class DownloadPage(RestrictedHandler):
-    def post(self):
-        check = self.login_check(2)
-        
-        logging.info("***Beginning Frost Pull***")
-        pull = requests.rankings_pull_filtered(boss, frost_parameters, frost_dimensions)
-        logging.info("***Compiling frost.csv data***")
-        output = exportdata.csv_output(pull, frost_dimensions)
-        self.response.headers["Content-Type"] = "application/csv"
-        self.response.headers['Content-Disposition'] = 'attachment; filename=%s' % "output.csv"
-        self.response.write(output)
         
         
 class SaveAccountForm(RestrictedHandler):
@@ -604,69 +589,6 @@ class PullWorker(webapp2.RequestHandler):
         requests.work_pull(pull)
     
 #***Functions***
-def parse_trinkets(trinket_dimension):
-    # Make a dimension with parameters for:
-        # - each possible combination of trinkets
-        # - and if necessary:
-            # - each trinket being paired with some other, undefined trinket
-            # - neither equipped trinket having been defined.'''
-    parameters = []
-    trinkets = ndb.get_multi(trinket_dimension.parameters)
-    # We use a theorem one stars and bars formula to determine the number of
-    # possible combinations of trinkets.  Because k is always 2 (number of 
-    # trinket slots,) the formula can be reduced significantly.
-    trinket_combinations = (len(trinkets)**2 - len(trinkets)) / 2
-    # Build parameters in our new dimension that represent each pair of 
-    # defined trinkets.
-    slot=[0,0]
-    for i in range(trinket_combinations):
-        # Iterate the trinket pairings.
-        slot[1] += 1
-        if slot[1] >= len(trinkets):
-            slot[0] += 1
-            slot[1] = slot [0] + 1
-        # Create a new Parameter representing combining the pair of
-        # trinkets.  This Parameter never gets stored in NDB, and is used
-        # in this pull worker only.
-        new_parameter = Parameter(
-            name = trinkets[slot[0]].name + "|" + trinkets[slot[1]].name,
-            include = trinkets[slot[0]].include + trinkets[slot[1]].include
-            )
-        # Add the new Parameter to the parameters list.
-        parameters.append(new_parameter)
-    # If the trinkets dimension is flagged to consider other trinkets:
-    if trinket_dimension.other_trinkets == True:
-        # Add a trinket to represent some other trinket.  We'll add all
-        # included spell IDs as excludes, though later we'll modify that.
-        other_trinkets = Parameter(name="Both Other Trinkets", exclude=[])
-        for trinket in trinkets:
-            other_trinkets.exclude += trinket.include
-        parameters.append(other_trinkets)
-        for trinket in trinkets:
-            # Add a new Parameter representing pairing a defined trinket
-            # with some other undefined trinket.
-            new_parameter = Parameter(
-                name = trinket.name + "|Other",
-                include = trinket.include,
-                exclude = other_trinkets.exclude,
-                )
-            # At this point, this is a useless parameter.  We need to
-            # remove all of our trinket's includes from the exclude list.
-            for include in new_parameter.include:
-                for exclude in new_parameter.exclude:
-                    if include == exclude:
-                        new_parameter.exclude.remove(exclude)
-            # Add the new Parameter to the parameters list.
-            parameters.append(new_parameter)
-    # Create a new dimension, parsed_trinket_dimension, to contain the new
-    # parameters.
-    parsed_trinket_dimension = Dimension(name='Trinkets')
-    # Store the parameters to NDB and add the keys to p_t_d.
-    parsed_trinket_dimension.parameters = ndb.put_multi(parameters)
-    # Store parsed_trinket_dimension to NDB and return the key.
-    return parsed_trinket_dimension.put()
-
-
 def initialize():
     #Used at service startup to populate NDB with class and zone data.
     class_data = requests.static_request("WCL", "classes")

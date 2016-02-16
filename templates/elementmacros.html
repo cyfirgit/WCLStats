@@ -11,6 +11,7 @@
 					class="form-control" 
 					{% if spell_id == none %}
 						placeholder="Add spell ID"
+						disabled
 					{% else %}
 						value="{{ spell_id }}"
 					{% endif %}>
@@ -49,7 +50,8 @@
 						name="parameter_{{ element_id_dimension }}_{{ element_id_parameter }}"
 						class="form-control" 
 							{% if parameter == none %}
-								placeholder="Add parameter" 
+								placeholder="Add parameter"
+								disabled
 							{% else %}
 								value="{{ parameter['name'] }}" 
 							{% endif %}>
@@ -132,7 +134,7 @@
 	</div>
 {%- endmacro %}
 
-{% macro trinkets(trinkets, other_trinkets) -%}
+{% macro trinkets(trinkets) -%}
 	<div id="trinketsContainer">
 		{% set element_id_dimension = 0 %}
 		<script>formID[0]=[]</script>
@@ -153,13 +155,6 @@
 			<div class="col-sm-11">
 				<div class="row bottom-buffer">
 					<h4>Trinkets</h4>
-					<label class="checkbox-inline">
-						<input type="checkbox" id="includeOtherTrinkets" name="include_other_trinkets"
-							{% if other_trinkets == True %}
-								checked
-							{% endif %}>
-						Include Other Trinkets
-					</label>
 				</div>
 				{% set start_id_parameter = 0 %}
 				{% for trinket in trinkets %}
@@ -209,7 +204,8 @@
 						name="dimension_{{ element_id_dimension }}"
 						class="form-control" 
 							{% if dimension == none %}
-								placeholder="Add dimension" 
+								placeholder="Add dimension"
+								disabled
 							{% else %}
 								value="{{ dimension['name'] }}" 
 							{% endif %}>
@@ -353,7 +349,7 @@
 	<tr>
 		<td>
 			{% if pull.status == 'Ready' %}
-				<a href="https://storage.cloud.google.com/wclstats.appspot.com/{{ pull.key.id() }}-{{ pull.key.parent().id() }}.csv">
+				<a href="/output?blob_key={{ pull.results }}">
 					<button class="btn btn-success" type="button">
 						<span class="glyphicon glyphicon-save"></span> {{ pull.status }}
 					</button>

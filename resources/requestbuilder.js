@@ -90,86 +90,80 @@ function parseIdArray(element_id) {
 
 //Adds a user-entered spellID to the request and creates a new input box for further spells
 function addSpell(element_id) {
-	if ( $.isNumeric( $( "input#" + element_id ).val() )) {
-		var idArray = parseIdArray(element_id);
-		/* idArray components:
-			[0] = dimension index
-			[1] = parameter index
-			[2] = 'include' or 'exclude'
-			[3] = spellID index
-		*/
-		if (idArray[2] === 'include') {
-			idArray[3] = 1
-		} else if (idArray[2] === 'exclude') {
-			idArray[3] = 2
-		};
-		if ( typeof formID[idArray[0]][idArray[1]][idArray[3]] !== 'undefined') {
-			formID[idArray[0]][idArray[1]][idArray[3]] += 1
-		} else {
-			formID[idArray[0]][idArray[1]][idArray[3]] = 1
-		};
-		idArray[4] = formID[idArray[0]][idArray[1]][idArray[3]]
-		console.log(String(idArray));
-		console.log(String(element_id));
-		$.ajax({
-			dataType: "json",
-			type: "post",
-			url: '/newelement',
-			data: ({
-				'type': 'spell',
-				'id_array': String(idArray),
-				'element_id': String(element_id),
-				'input_value': $( "input#" + element_id ).val(),
-			}),
-			success: writeElement,
-		});
+	var idArray = parseIdArray(element_id);
+	/* idArray components:
+		[0] = dimension index
+		[1] = parameter index
+		[2] = 'include' or 'exclude'
+		[3] = spellID index
+	*/
+	if (idArray[2] === 'include') {
+		idArray[3] = 1
+	} else if (idArray[2] === 'exclude') {
+		idArray[3] = 2
 	};
+	if ( typeof formID[idArray[0]][idArray[1]][idArray[3]] !== 'undefined') {
+		formID[idArray[0]][idArray[1]][idArray[3]] += 1
+	} else {
+		formID[idArray[0]][idArray[1]][idArray[3]] = 1
+	};
+	idArray[4] = formID[idArray[0]][idArray[1]][idArray[3]]
+	console.log(String(idArray));
+	console.log(String(element_id));
+	$.ajax({
+		dataType: "json",
+		type: "post",
+		url: '/newelement',
+		data: ({
+			'type': 'spell',
+			'id_array': String(idArray),
+			'element_id': String(element_id),
+			'input_value': $( "input#" + element_id ).val(),
+		}),
+		success: writeElement,
+	});
 };
 
 //Adds a user-entered parameter to the request and creates a new input box for further parameters
 function addParameter(element_id) {
-	if ( $( "input#" + element_id ).val() !== "") {
-		var idArray = parseIdArray(element_id);
-		/* idArray components:
-			[0] = dimension index
-			[1] = parameter index (This should be 'new' after parseIdArray())
-		*/
-		formID[idArray[0]].push([]);
-		idArray[1] = formID[idArray[0]].length - 1;
-		$.ajax({
-			dataType: "json",
-			type: "post",
-			url: '/newelement',
-			data: ({
-				'type': 'parameter',
-				'id_array': String(idArray),
-				'element_id': String(element_id),
-				'input_value': $( "input#" + element_id ).val(),
-			}),
-			success: writeElement,
-		});
-	};
+	var idArray = parseIdArray(element_id);
+	/* idArray components:
+		[0] = dimension index
+		[1] = parameter index (This should be 'new' after parseIdArray())
+	*/
+	formID[idArray[0]].push([]);
+	idArray[1] = formID[idArray[0]].length - 1;
+	$.ajax({
+		dataType: "json",
+		type: "post",
+		url: '/newelement',
+		data: ({
+			'type': 'parameter',
+			'id_array': String(idArray),
+			'element_id': String(element_id),
+			'input_value': $( "input#" + element_id ).val(),
+		}),
+		success: writeElement,
+	});
 };
 
 //Adds a user-entered dimension to the request and creates a new input box for further dimensions
 function addDimension(element_id) {
-	if ( $( "input#" + element_id ).val() !== "") {
-		var idArray = []
-		formID.push([]);
-		idArray[0] = formID.length - 1;
-		$.ajax({
-			dataType: "json",
-			type: "post",
-			url: '/newelement',
-			data: ({
-				'type': 'dimension',
-				'id_array': String(idArray),
-				'element_id': String(element_id),
-				'input_value': $( "input#" + element_id ).val(),
-			}),
-			success: writeElement,
-		});
-	};
+	var idArray = []
+	formID.push([]);
+	idArray[0] = formID.length - 1;
+	$.ajax({
+		dataType: "json",
+		type: "post",
+		url: '/newelement',
+		data: ({
+			'type': 'dimension',
+			'id_array': String(idArray),
+			'element_id': String(element_id),
+			'input_value': $( "input#" + element_id ).val(),
+		}),
+		success: writeElement,
+	});
 };
 
 function addTrinkets() {

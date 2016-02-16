@@ -36,7 +36,7 @@
 <div class="row">
 	<div id="dimensions" class="col-sm-12">
 			{% if request['trinkets']|length > 0 %}
-				{{ elements.trinkets(request['trinkets'], request['other_trinkets']) }}
+				{{ elements.trinkets(request['trinkets']) }}
 			{% else %}
 				{{ elements.no_trinkets() }}
 			{% endif %}
