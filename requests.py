@@ -76,7 +76,7 @@ def work_pull(pull):
     
     #Try to request the base query page 1:
     try:
-        response = pull_ranks(query_base)
+        response = pull_ranks(query_base + "&page=1")
         #For each rank: O(N2) N2=Ranks
         for rank in response['rankings']:
             #Make a key string (name_server_reportID)
@@ -86,21 +86,23 @@ def work_pull(pull):
             #Save the rank to results with that key
             results[key_string] = rank
         #Use the total to get a max_page
-        max_page = int(math.ceil(float(response['total']) / 500)) + 1
+        max_page = int(math.ceil(float(response['total']) / 500))
     except PullFailedError:
         raise ProcessFailureError(
             "Could not get ranks count for Pull %d from user %s"
             % (pull_id, user_id))
   
     #For each page after page 1:
-    for page in range(2, max_page):
+    for page in range(2, max_page + 1):
         try:
+            logging.info('Building initial results for page %d' % page)
             response = pull_ranks(query_base + "&page=" + str(page))
             #For each rank: O(N2) N2=Ranks
             for rank in response['rankings']:
                 #Make a key string (name_server_reportID)
-                key_string = (rank['name'] + "_" + rank['server'] + 
-                              "_" + rank['reportID'])
+                key_string = (rank['name'] + "_" + 
+                              rank['server'] + "_" + 
+                              rank['reportID'])
                 #Save the rank to results with that key
                 results[key_string] = rank
         except PullFailedError:
@@ -113,25 +115,32 @@ def work_pull(pull):
         dimension_name = filter_.dimension.get().name
         parameter_name = filter_.parameter.get().name
         #For each page needed to pull all ranks:
-        for page in range(1, max_page):
+        for page in range(1, max_page + 1):
             #Try to make the request
             try:
+                logging.info('Pulling page %d of filter %s|%s' % (page, dimension_name, parameter_name))
                 response = pull_ranks(query_base + filter_.string + 
                                       "&page=" + str(page))
                 #For each {rank}: O(N2)
                 for rank in response['rankings']:
                     #Make a key string (CharacterName_ServerName_FightID)
-                    key_string = (rank['name'] + "_" + rank['server'] + 
-                                  "_" + rank['reportID'])
+                    key_string = (rank['name'] + "_" + 
+                                  rank['server'] + "_" + 
+                                  rank['reportID'])
                     #Add the filter tag to results
                     if dimension_name == "Trinkets":
                         try:
-                            if results[key_string]['Trinket1'] != None:
+                            if 'Trinket1' in results[key_string]:
                                 results[key_string]['Trinket2'] = parameter_name
+                            else:
+                                results[key_string]['Trinket1'] = parameter_name
                         except KeyError:
-                            results[key_string]['Trinket1'] = parameter_name
+                            logging.error('Could not add %s to dimension %s on key %s' %(parameter_name, dimension_name, key_string))
                     else:
-                        results[key_string][dimension_name] = parameter_name
+                        try:
+                            results[key_string][dimension_name] = parameter_name
+                        except KeyError:
+                            logging.error('Could not add %s to dimension %s on key %s' %(parameter_name, dimension_name, key_string))
             #If it fails:
             except PullFailedError:
                 #Add this page to failed_pages
@@ -163,8 +172,9 @@ def work_pull(pull):
                     #For each {rank}: O(N2)
                     for rank in response['rankings']:
                         #Make a key string (CharacterName_ServerName_FightID)
-                        key_string = (rank['name'] + "_" + rank['server'] + 
-                                      "_" + rank['reportID'])
+                        key_string = (rank['name'] + "_" + 
+                                      rank['server'] + "_" + 
+                                      rank['reportID'])
                         #Add the filter tag to results
                     if dimension_name == "Trinkets":
                         try:
