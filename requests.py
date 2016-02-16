@@ -10,6 +10,8 @@ import cloudstorage as gcs
 
 from google.appengine.ext import ndb
 from google.appengine.api import urlfetch
+from google.appengine.ext import blobstore
+from google.appengine.ext.webapp import blobstore_handlers
 
 PULL_ATTEMPTS = 3
 
@@ -41,13 +43,16 @@ def work_pull(pull):
     dimension_name = ''
     parameter_name = ''
     dimensions = ndb.get_multi(request.dimensions)
+    #Add the trinket dimension to dimensions.
+    dimensions.append(request.trinket_dimension.get())
     #Build a base query string from the Pull attributes.
     query_base = ("https://www.warcraftlogs.com:443/v1/rankings/encounter/" +
                   str(pull.encounter) + "?metric=" + pull.metric +
                   "&difficulty=" + str(pull.difficulty) +
                   "&class=" + str(request.character_class) +
                   "&spec=" + str(pull.spec) +
-                  "&api_key=" + json_pull("apikeys.json")["WCL"]["key"])
+                  "&api_key=" + json_pull("apikeys.json")["WCL"]["key"] + 
+                  "&limit=500")
     #Get the requests and parameters.
     #Build Filter objects for each parameter. O(N) N=Parameters * spell ids
     for dimension in dimensions:
@@ -119,7 +124,14 @@ def work_pull(pull):
                     key_string = (rank['name'] + "_" + rank['server'] + 
                                   "_" + rank['reportID'])
                     #Add the filter tag to results
-                    results[key_string][dimension_name] = parameter_name
+                    if dimension_name == "Trinkets":
+                        try:
+                            if results[key_string]['Trinket1'] != None:
+                                results[key_string]['Trinket2'] = parameter_name
+                        except KeyError:
+                            results[key_string]['Trinket1'] = parameter_name
+                    else:
+                        results[key_string][dimension_name] = parameter_name
             #If it fails:
             except PullFailedError:
                 #Add this page to failed_pages
@@ -154,6 +166,13 @@ def work_pull(pull):
                         key_string = (rank['name'] + "_" + rank['server'] + 
                                       "_" + rank['reportID'])
                         #Add the filter tag to results
+                    if dimension_name == "Trinkets":
+                        try:
+                            if results[key_string]['Trinket1'] != None:
+                                results[key_string]['Trinket2'] = parameter_name
+                        except KeyError:
+                            results[key_string]['Trinket1'] = parameter_name
+                    else:
                         results[key_string][dimension_name] = parameter_name
                 #If it fails:
                 except PullFailedError:
@@ -184,6 +203,67 @@ def work_pull(pull):
         pull.status = "Incomplete"
     else:
         pull.failed_filters = []
+        main.vislog("Starting csv build")
+        #Take the collected ranks from a pull request and formats them into a 
+        #.csv file.  
+        csvfile = ""
+        #Determine if the pull is for a mythic encounter.
+        difficulties = main.Reference.get_by_id('difficulties').json
+        for difficulty in difficulties:
+            if difficulty['name'] == "Mythic":
+                mythic_level = difficulty['id']
+        is_mythic = pull.difficulty is mythic_level
+        #These are the fields that WCL kicks out in any ranks pull.
+        fieldnames = ["name", "class", "spec", "itemLevel", "total",
+                      "duration", "size", "link", "guild", "server"]
+        #If there's a trinket dimension, add it to the list of dimensions.
+        if request.trinket_dimension != None:
+            fieldnames.append('Trinket1')
+            fieldnames.append('Trinket2')
+        #Add all of the request dimensions add fields for the csv file.
+        for dimension in dimensions:
+            if dimension.name != 'Trinkets':
+                fieldnames.append(dimension.name)
+        
+        #Start the file with the field names.
+        for field in fieldnames:
+            csvfile += field + ","
+        csvfile += "\n"
+        
+        #Take each rank and format it as csv.
+        for rank in results:
+            rank_line = ""
+            for item in fieldnames:
+                #If the item is the report link, take the fightID and turn it 
+                #into an actual URL.
+                if item == "link":
+                    rank_line += "https://www.warcraftlogs.com/reports/" + \
+                                results[rank]["reportID"] + "#fight=" + \
+                                str(results[rank]["fightID"]) + ","
+                #Mythic ranks pulls don't include a size field, so if it's a 
+                #mythic pull, we need to manually add "20" as the size.
+                elif item == "size":
+                    if is_mythic:
+                        rank_line += str(20) + ","
+                    else:
+                        rank_line += unicode(results[rank][item]) + ","
+                #For anything else, just get the applicable data and plug it in
+                #under the correpsonding field name.
+                else:
+                    try:
+                        rank_line += unicode(results[rank][item]) + ","
+                    except KeyError:
+                        rank_line += unicode("-,")
+            rank_line += "\n"
+            csvfile += rank_line
+      
+        #Store the csv in Cloud Storage
+        results_filename = filename_core + ".csv"
+        blobstore_filename = '/gs' + results_filename
+        gcs_file = gcs.open(results_filename, 'w', content_type='application/csv; charset=utf-8')
+        gcs_file.write(csvfile.encode('utf-8'))
+        gcs_file.close()
+        pull.results = blobstore.create_gs_key(blobstore_filename)
         pull.status = "Ready"
     
     # Update the Pull in NDB.
