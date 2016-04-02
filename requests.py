@@ -44,7 +44,8 @@ def work_pull(pull):
     parameter_name = ''
     dimensions = ndb.get_multi(request.dimensions)
     #Add the trinket dimension to dimensions.
-    dimensions.append(request.trinket_dimension.get())
+    if request.trinket_dimension != None:
+        dimensions.append(request.trinket_dimension.get())
     #Build a base query string from the Pull attributes.
     query_base = ("https://www.warcraftlogs.com:443/v1/rankings/encounter/" +
                   str(pull.encounter) + "?metric=" + pull.metric +
@@ -76,7 +77,7 @@ def work_pull(pull):
     
     #Try to request the base query page 1:
     try:
-        response = pull_ranks(query_base)
+        response = pull_ranks(query_base + "&page=1")
         #For each rank: O(N2) N2=Ranks
         for rank in response['rankings']:
             #Make a key string (name_server_reportID)
@@ -86,21 +87,23 @@ def work_pull(pull):
             #Save the rank to results with that key
             results[key_string] = rank
         #Use the total to get a max_page
-        max_page = int(math.ceil(float(response['total']) / 500)) + 1
+        max_page = int(math.ceil(float(response['total']) / 500))
     except PullFailedError:
         raise ProcessFailureError(
             "Could not get ranks count for Pull %d from user %s"
             % (pull_id, user_id))
   
     #For each page after page 1:
-    for page in range(2, max_page):
+    for page in range(2, max_page + 1):
         try:
+            logging.info('Building initial results for page %d' % page)
             response = pull_ranks(query_base + "&page=" + str(page))
             #For each rank: O(N2) N2=Ranks
             for rank in response['rankings']:
                 #Make a key string (name_server_reportID)
-                key_string = (rank['name'] + "_" + rank['server'] + 
-                              "_" + rank['reportID'])
+                key_string = (rank['name'] + "_" + 
+                              rank['server'] + "_" + 
+                              rank['reportID'])
                 #Save the rank to results with that key
                 results[key_string] = rank
         except PullFailedError:
@@ -113,25 +116,32 @@ def work_pull(pull):
         dimension_name = filter_.dimension.get().name
         parameter_name = filter_.parameter.get().name
         #For each page needed to pull all ranks:
-        for page in range(1, max_page):
+        for page in range(1, max_page + 1):
             #Try to make the request
             try:
+                logging.info('Pulling page %d of filter %s|%s' % (page, dimension_name, parameter_name))
                 response = pull_ranks(query_base + filter_.string + 
                                       "&page=" + str(page))
                 #For each {rank}: O(N2)
                 for rank in response['rankings']:
                     #Make a key string (CharacterName_ServerName_FightID)
-                    key_string = (rank['name'] + "_" + rank['server'] + 
-                                  "_" + rank['reportID'])
+                    key_string = (rank['name'] + "_" + 
+                                  rank['server'] + "_" + 
+                                  rank['reportID'])
                     #Add the filter tag to results
                     if dimension_name == "Trinkets":
                         try:
-                            if results[key_string]['Trinket1'] != None:
+                            if 'Trinket1' in results[key_string]:
                                 results[key_string]['Trinket2'] = parameter_name
+                            else:
+                                results[key_string]['Trinket1'] = parameter_name
                         except KeyError:
-                            results[key_string]['Trinket1'] = parameter_name
+                            logging.error('Could not add %s to dimension %s on key %s' %(parameter_name, dimension_name, key_string))
                     else:
-                        results[key_string][dimension_name] = parameter_name
+                        try:
+                            results[key_string][dimension_name] = parameter_name
+                        except KeyError:
+                            logging.error('Could not add %s to dimension %s on key %s' %(parameter_name, dimension_name, key_string))
             #If it fails:
             except PullFailedError:
                 #Add this page to failed_pages
@@ -163,8 +173,9 @@ def work_pull(pull):
                     #For each {rank}: O(N2)
                     for rank in response['rankings']:
                         #Make a key string (CharacterName_ServerName_FightID)
-                        key_string = (rank['name'] + "_" + rank['server'] + 
-                                      "_" + rank['reportID'])
+                        key_string = (rank['name'] + "_" + 
+                                      rank['server'] + "_" + 
+                                      rank['reportID'])
                         #Add the filter tag to results
                     if dimension_name == "Trinkets":
                         try:
@@ -206,7 +217,12 @@ def work_pull(pull):
         main.vislog("Starting csv build")
         #Take the collected ranks from a pull request and formats them into a 
         #.csv file.  
-        csvfile = ""
+      
+        #Create a filestream in GCS for the csv data.
+        results_filename = filename_core + ".csv"
+        blobstore_filename = '/gs' + results_filename
+        gcs_file = gcs.open(results_filename, 'w', content_type='application/csv; charset=utf-8')
+        
         #Determine if the pull is for a mythic encounter.
         difficulties = main.Reference.get_by_id('difficulties').json
         for difficulty in difficulties:
@@ -227,41 +243,34 @@ def work_pull(pull):
         
         #Start the file with the field names.
         for field in fieldnames:
-            csvfile += field + ","
-        csvfile += "\n"
+            gcs_file.write((field + ",").encode('utf-8'))
+        gcs_file.write(("\n").encode('utf-8'))
         
         #Take each rank and format it as csv.
         for rank in results:
-            rank_line = ""
             for item in fieldnames:
                 #If the item is the report link, take the fightID and turn it 
                 #into an actual URL.
                 if item == "link":
-                    rank_line += "https://www.warcraftlogs.com/reports/" + \
-                                results[rank]["reportID"] + "#fight=" + \
-                                str(results[rank]["fightID"]) + ","
+                    gcs_file.write(("https://www.warcraftlogs.com/reports/" + 
+                                results[rank]["reportID"] + "#fight=" + 
+                                str(results[rank]["fightID"]) + ",").encode('utf-8'))
                 #Mythic ranks pulls don't include a size field, so if it's a 
                 #mythic pull, we need to manually add "20" as the size.
                 elif item == "size":
                     if is_mythic:
-                        rank_line += str(20) + ","
+                        gcs_file.write((str(20) + ",").encode('utf-8'))
                     else:
-                        rank_line += unicode(results[rank][item]) + ","
+                        gcs_file.write((unicode(results[rank][item]) + ",").encode('utf-8'))
                 #For anything else, just get the applicable data and plug it in
                 #under the correpsonding field name.
                 else:
                     try:
-                        rank_line += unicode(results[rank][item]) + ","
+                        gcs_file.write((unicode(results[rank][item]) + ",").encode('utf-8'))
                     except KeyError:
-                        rank_line += unicode("-,")
-            rank_line += "\n"
-            csvfile += rank_line
-      
-        #Store the csv in Cloud Storage
-        results_filename = filename_core + ".csv"
-        blobstore_filename = '/gs' + results_filename
-        gcs_file = gcs.open(results_filename, 'w', content_type='application/csv; charset=utf-8')
-        gcs_file.write(csvfile.encode('utf-8'))
+                        gcs_file.write(("-,").encode('utf-8'))
+            gcs_file.write(("\n").encode('utf-8'))
+        
         gcs_file.close()
         pull.results = blobstore.create_gs_key(blobstore_filename)
         pull.status = "Ready"
