@@ -217,7 +217,12 @@ def work_pull(pull):
         main.vislog("Starting csv build")
         #Take the collected ranks from a pull request and formats them into a 
         #.csv file.  
-        csvfile = ""
+      
+        #Create a filestream in GCS for the csv data.
+        results_filename = filename_core + ".csv"
+        blobstore_filename = '/gs' + results_filename
+        gcs_file = gcs.open(results_filename, 'w', content_type='application/csv; charset=utf-8')
+        
         #Determine if the pull is for a mythic encounter.
         difficulties = main.Reference.get_by_id('difficulties').json
         for difficulty in difficulties:
@@ -238,41 +243,34 @@ def work_pull(pull):
         
         #Start the file with the field names.
         for field in fieldnames:
-            csvfile += field + ","
-        csvfile += "\n"
+            gcs_file.write((field + ",").encode('utf-8'))
+        gcs_file.write(("\n").encode('utf-8'))
         
         #Take each rank and format it as csv.
         for rank in results:
-            rank_line = ""
             for item in fieldnames:
                 #If the item is the report link, take the fightID and turn it 
                 #into an actual URL.
                 if item == "link":
-                    rank_line += "https://www.warcraftlogs.com/reports/" + \
-                                results[rank]["reportID"] + "#fight=" + \
-                                str(results[rank]["fightID"]) + ","
+                    gcs_file.write(("https://www.warcraftlogs.com/reports/" + 
+                                results[rank]["reportID"] + "#fight=" + 
+                                str(results[rank]["fightID"]) + ",").encode('utf-8'))
                 #Mythic ranks pulls don't include a size field, so if it's a 
                 #mythic pull, we need to manually add "20" as the size.
                 elif item == "size":
                     if is_mythic:
-                        rank_line += str(20) + ","
+                        gcs_file.write((str(20) + ",").encode('utf-8'))
                     else:
-                        rank_line += unicode(results[rank][item]) + ","
+                        gcs_file.write((unicode(results[rank][item]) + ",").encode('utf-8'))
                 #For anything else, just get the applicable data and plug it in
                 #under the correpsonding field name.
                 else:
                     try:
-                        rank_line += unicode(results[rank][item]) + ","
+                        gcs_file.write((unicode(results[rank][item]) + ",").encode('utf-8'))
                     except KeyError:
-                        rank_line += unicode("-,")
-            rank_line += "\n"
-            csvfile += rank_line
-      
-        #Store the csv in Cloud Storage
-        results_filename = filename_core + ".csv"
-        blobstore_filename = '/gs' + results_filename
-        gcs_file = gcs.open(results_filename, 'w', content_type='application/csv; charset=utf-8')
-        gcs_file.write(csvfile.encode('utf-8'))
+                        gcs_file.write(("-,").encode('utf-8'))
+            gcs_file.write(("\n").encode('utf-8'))
+        
         gcs_file.close()
         pull.results = blobstore.create_gs_key(blobstore_filename)
         pull.status = "Ready"
