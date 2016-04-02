@@ -44,7 +44,8 @@ def work_pull(pull):
     parameter_name = ''
     dimensions = ndb.get_multi(request.dimensions)
     #Add the trinket dimension to dimensions.
-    dimensions.append(request.trinket_dimension.get())
+    if request.trinket_dimension != None:
+        dimensions.append(request.trinket_dimension.get())
     #Build a base query string from the Pull attributes.
     query_base = ("https://www.warcraftlogs.com:443/v1/rankings/encounter/" +
                   str(pull.encounter) + "?metric=" + pull.metric +
