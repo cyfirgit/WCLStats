@@ -8,7 +8,6 @@
     #Use the deferred library for pull tasks.
     #Change results property around CLARIFY
     #Validation check for dimension names to prevent WCL ranks keywords.
-    #Make it stop building new dimensions on update.
     #Progress bars for pulls in progress.
     #Push data to user experience? Notifications pulls complete, progress?
     #Nasty repeating code in requests.py!
